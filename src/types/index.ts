@@ -1,4 +1,4 @@
-export interface Category {
+export interface Routine {
   id: string;
   name: string;
 }
@@ -7,5 +7,5 @@ export interface Todo {
   id: string;
   text: string;
   completed: boolean;
-  categoryId: string;
+  routineId: string;
 }

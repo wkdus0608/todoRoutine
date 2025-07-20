@@ -1,26 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Todo, Category } from '../types';
+import { Todo, Routine } from '../types';
 
-const CATEGORIES_KEY = '@TodoListApp:categories';
+const ROUTINES_KEY = '@TodoListApp:routines';
 const TODOS_KEY = '@TodoListApp:todos';
 
-// Categories
-export const loadCategories = async (): Promise<Category[]> => {
+// Routines
+export const loadRoutines = async (): Promise<Routine[]> => {
   try {
-    const jsonValue = await AsyncStorage.getItem(CATEGORIES_KEY);
+    const jsonValue = await AsyncStorage.getItem(ROUTINES_KEY);
     return jsonValue != null ? JSON.parse(jsonValue) : [];
   } catch (e) {
-    console.error('Failed to load categories.', e);
+    console.error('Failed to load routines.', e);
     return [];
   }
 };
 
-export const saveCategories = async (categories: Category[]): Promise<void> => {
+export const saveRoutines = async (routines: Routine[]): Promise<void> => {
   try {
-    const jsonValue = JSON.stringify(categories);
-    await AsyncStorage.setItem(CATEGORIES_KEY, jsonValue);
+    const jsonValue = JSON.stringify(routines);
+    await AsyncStorage.setItem(ROUTINES_KEY, jsonValue);
   } catch (e) {
-    console.error('Failed to save categories.', e);
+    console.error('Failed to save routines.', e);
   }
 };
 

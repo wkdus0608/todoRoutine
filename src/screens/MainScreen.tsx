@@ -1,21 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Button, FlatList, StyleSheet, TouchableOpacity, SectionList } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, Button, FlatList, StyleSheet, TouchableOpacity, SectionList, Alert, Modal } from 'react-native';
+import AddTodoForm from '../components/AddTodoForm';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { loadTodos, saveTodos, loadCategories } from '../storage/dataManager';
-import { Todo, Category } from '../types';
+import { loadTodos, saveTodos, loadRoutines } from '../storage/dataManager';
+import { Todo, Routine } from '../types';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const MainScreen = () => {
   const navigation = useNavigation();
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [routines, setRoutines] = useState<Routine[]>([]);
   const [filter, setFilter] = useState<string | null>(null); // null means all
 
   const fetchData = async () => {
     const loadedTodos = await loadTodos();
-    const loadedCategories = await loadCategories();
+    const loadedRoutines = await loadRoutines();
     setTodos(loadedTodos);
-    setCategories(loadedCategories);
+    setRoutines(loadedRoutines);
   };
 
   useFocusEffect(
@@ -23,6 +24,19 @@ const MainScreen = () => {
       fetchData();
     }, [])
   );
+
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const handleTodoAdded = () => {
+    fetchData(); // Reload data
+    setModalVisible(false); // Close modal
+  };
+
+  const handleDeleteTodo = async (id: string) => {
+    const updatedTodos = todos.filter(todo => todo.id !== id);
+    setTodos(updatedTodos);
+    await saveTodos(updatedTodos);
+  };
 
   const handleToggleComplete = async (id: string) => {
     const updatedTodos = todos.map(todo =>
@@ -32,24 +46,18 @@ const MainScreen = () => {
     await saveTodos(updatedTodos);
   };
 
-  const handleDeleteTodo = async (id: string) => {
-    const updatedTodos = todos.filter(todo => todo.id !== id);
-    setTodos(updatedTodos);
-    await saveTodos(updatedTodos);
-  };
-
-  const todosByCategory = categories
-    .map(category => ({
-      title: category.name,
-      data: todos.filter(todo => todo.categoryId === category.id),
+  const todosByRoutine = routines
+    .map(routine => ({
+      title: routine.name,
+      data: todos.filter(todo => todo.routineId === routine.id),
     }))
-    .filter(category => category.data.length > 0);
+    .filter(routine => routine.data.length > 0);
 
   const uncategorizedTodos = todos.filter(
-    todo => !todo.categoryId || !categories.find(c => c.id === todo.categoryId)
+    todo => !todo.routineId || !routines.find(c => c.id === todo.routineId)
   );
 
-  const sections = [...todosByCategory];
+  const sections = [...todosByRoutine];
   if (uncategorizedTodos.length > 0) {
     sections.push({ title: 'Uncategorized', data: uncategorizedTodos });
   }
@@ -57,9 +65,7 @@ const MainScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Button title="Manage Categories" onPress={() => navigation.navigate('Categories')} />
-      </View>
+      
       <SectionList
         sections={sections}
         keyExtractor={item => item.id}
@@ -79,9 +85,24 @@ const MainScreen = () => {
         )}
         ListEmptyComponent={<Text style={styles.emptyText}>No todos yet. Add one!</Text>}
       />
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <AddTodoForm onTodoAdded={handleTodoAdded} />
+            <Button title="Close" onPress={() => setModalVisible(false)} />
+          </View>
+        </View>
+      </Modal>
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('Add')}
+        onPress={() => setModalVisible(true)}
       >
         <Icon name="add" size={30} color="white" />
       </TouchableOpacity>
@@ -125,6 +146,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
     color: '#333',
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalView: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
 
