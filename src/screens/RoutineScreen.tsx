@@ -22,6 +22,10 @@ const RoutineScreen = () => {
       Alert.alert('Error', 'Routine name cannot be empty.');
       return;
     }
+    if (routines.some(routine => routine.name === newRoutineName.trim())) {
+      Alert.alert('Error', 'A routine with this name already exists.');
+      return;
+    }
     const newRoutine: Routine = {
       id: uuidv4(),
       name: newRoutineName.trim(),
