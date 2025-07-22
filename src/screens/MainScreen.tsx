@@ -250,7 +250,14 @@ const MainScreen = () => {
       >
         <View style={styles.todoContent}>
           <Icon name={item.item!.completed ? 'check-box' : 'check-box-outline-blank'} size={24} color="#4F8EF7" />
-          <Text style={[styles.todoText, item.item!.completed && styles.completedText]}>{item.item!.text}</Text>
+          <View style={styles.todoTextContainer}>
+            <Text style={[styles.todoText, item.item!.completed && styles.completedText]}>{item.item!.text}</Text>
+            {item.item?.dueDate && (
+              <Text style={styles.dueDateText}>
+                Due: {new Date(item.item.dueDate).toLocaleDateString()}
+              </Text>
+            )}
+          </View>
         </View>
         <TouchableOpacity onPress={() => handleDeleteTodo(item.item!.id)}>
           <Icon name="delete" size={24} color="red" />
@@ -278,7 +285,7 @@ const MainScreen = () => {
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <AddTodoForm onTodoAdded={handleTodoAdded} />
+            <AddTodoForm onTodoAdded={handleTodoAdded} source="main" />
             <Button title="Close" onPress={() => setModalVisible(false)} />
           </View>
         </View>
@@ -305,8 +312,14 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   todoContent: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  todoText: { marginLeft: 10, fontSize: 18 },
+  todoTextContainer: { marginLeft: 10, flex: 1 },
+  todoText: { fontSize: 18 },
   completedText: { textDecorationLine: 'line-through', color: '#aaa' },
+  dueDateText: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+  },
   fab: {
     position: 'absolute',
     right: 30,

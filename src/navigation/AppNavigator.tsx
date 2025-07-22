@@ -1,32 +1,37 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
-// TODO: Screen components will be imported later
-// import MainScreen from '../screens/MainScreen';
-// import AddScreen from '../screens/AddScreen';
 import MainScreen from '../screens/MainScreen';
-import AddScreen from '../screens/AddScreen';
-import RoutineScreen from '../screens/RoutineScreen';
+import TodayScreen from '../screens/TodayScreen';
 
-const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
 
 const AppNavigator = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Main">
-        <Stack.Screen
-          name="Main"
-          component={MainScreen}
-          options={{ title: ' ' }}
-        />
-        <Stack.Screen
-          name="Add"
-          component={AddScreen}
-          options={{ title: 'Add Todo' }}
-        />
-        <Stack.Screen name="Routines" component={RoutineScreen} options={{ title: 'Routines' }} />
-      </Stack.Navigator>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ focused, color, size }) => {
+            let iconName;
+
+            if (route.name === '오늘') {
+              iconName = focused ? 'today' : 'today';
+            } else if (route.name === '목록') {
+              iconName = focused ? 'format-list-bulleted' : 'format-list-bulleted';
+            }
+
+            // You can return any component that you like here!
+            return <Icon name={iconName} size={size} color={color} />;
+          },
+          tabBarActiveTintColor: '#4F8EF7',
+          tabBarInactiveTintColor: 'gray',
+        })}
+      >
+        <Tab.Screen name="오늘" component={TodayScreen} options={{ title: '오늘' }} />
+        <Tab.Screen name="목록" component={MainScreen} options={{ title: '목록' }} />
+      </Tab.Navigator>
     </NavigationContainer>
   );
 };
