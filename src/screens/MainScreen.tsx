@@ -14,7 +14,84 @@ interface FlatListItem {
   name?: string; // For routines
   item?: Todo; // For todos
   routineId?: string;
+  parentId?: string; // Added for sub-todos
+  level: number; // Added for indentation
 }
+
+// Helper function to flatten todos with their sub-todos for DraggableFlatList
+const flattenTodos = (todosArray: Todo[], routineId: string | undefined, level: number = 0): FlatListItem[] => {
+  let flattened: FlatListItem[] = [];
+  todosArray.forEach(todo => {
+    flattened.push({
+      type: 'todo',
+      id: todo.id,
+      item: todo,
+      routineId: routineId,
+      parentId: todo.parentId,
+      level: level,
+    });
+    if (todo.subTodos && todo.subTodos.length > 0) {
+      flattened = flattened.concat(flattenTodos(todo.subTodos, routineId, level + 1));
+    }
+  });
+  return flattened;
+};
+
+// Helper function to reconstruct nested todos from flattened data
+const reconstructTodos = (flatData: FlatListItem[], allOriginalTodos: Todo[]): Todo[] => {
+  const newTopLevelTodos: Todo[] = [];
+  const tempTodoMap = new Map<string, Todo>(); // To store todos as we process them, with cleared parent/subTodo relationships
+
+  // Initialize all todos with their original properties, but clear parent/subTodo relationships
+  allOriginalTodos.forEach(todo => {
+    const cleanTodo: Todo = { ...todo, parentId: undefined, subTodos: [] };
+    tempTodoMap.set(cleanTodo.id, cleanTodo);
+  });
+
+  const parentStack: { id: string; level: number; todoRef: Todo }[] = []; // Stack to keep track of potential parents
+
+  let currentRoutineId: string | undefined = undefined;
+
+  for (let i = 0; i < flatData.length; i++) {
+    const item = flatData[i];
+
+    if (item.type === 'routine') {
+      currentRoutineId = item.id;
+      parentStack.length = 0; // Reset parent stack for new routine
+    } else if (item.type === 'todo' && item.item) {
+      const currentTodo = tempTodoMap.get(item.id);
+      if (!currentTodo) continue;
+
+      currentTodo.routineId = currentRoutineId; // Assign routine based on current context
+
+      // Determine the effective level based on the previous item's effective level
+      // This is a heuristic: if an item is dropped immediately after another, and it's
+      // visually indented, we assume it's a child. We'll use the original level as a hint,
+      // but primarily rely on the stack for parent-child relationships.
+      let effectiveLevel = item.level; // Start with the original level as a base hint
+
+      // Adjust parentStack based on current item's effective level
+      while (parentStack.length > 0 && parentStack[parentStack.length - 1].level >= effectiveLevel) {
+        parentStack.pop();
+      }
+
+      if (parentStack.length > 0) {
+        // This todo is a child of the top of the stack
+        const parent = parentStack[parentStack.length - 1];
+        currentTodo.parentId = parent.id;
+        parent.todoRef.subTodos?.push(currentTodo);
+      } else {
+        // This is a top-level todo for the current routine or uncategorized
+        newTopLevelTodos.push(currentTodo);
+      }
+
+      // Push current todo to stack if it can be a parent
+      // Use the effectiveLevel for the stack to maintain correct hierarchy
+      parentStack.push({ id: currentTodo.id, level: effectiveLevel, todoRef: currentTodo });
+    }
+  }
+  return newTopLevelTodos;
+};
 
 const MainScreen = () => {
   const navigation = useNavigation();
@@ -42,16 +119,38 @@ const MainScreen = () => {
     setModalVisible(false); // Close modal
   };
 
-  const handleDeleteTodo = async (id: string) => {
-    const updatedTodos = todos.filter(todo => todo.id !== id);
+  const handleDeleteTodo = async (idToDelete: string) => {
+    const deleteRecursive = (todosArray: Todo[]): Todo[] => {
+      return todosArray.filter(todo => {
+        if (todo.id === idToDelete) {
+          return false; // This todo is deleted
+        }
+        if (todo.subTodos && todo.subTodos.length > 0) {
+          todo.subTodos = deleteRecursive(todo.subTodos);
+        }
+        return true;
+      });
+    };
+
+    const updatedTodos = deleteRecursive(todos);
     setTodos(updatedTodos);
     await saveTodos(updatedTodos);
   };
 
-  const handleToggleComplete = async (id: string) => {
-    const updatedTodos = todos.map(todo =>
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    );
+  const handleToggleComplete = async (idToToggle: string) => {
+    const toggleRecursive = (todosArray: Todo[]): Todo[] => {
+      return todosArray.map(todo => {
+        if (todo.id === idToToggle) {
+          return { ...todo, completed: !todo.completed };
+        }
+        if (todo.subTodos && todo.subTodos.length > 0) {
+          return { ...todo, subTodos: toggleRecursive(todo.subTodos) };
+        }
+        return todo;
+      });
+    };
+
+    const updatedTodos = toggleRecursive(todos);
     setTodos(updatedTodos);
     await saveTodos(updatedTodos);
   };
@@ -88,52 +187,29 @@ const MainScreen = () => {
   };
 
   const handleDragEnd = ({ data }: { data: FlatListItem[] }) => {
-    console.log('Drag ended. New data order:', data.map(d => ({id: d.id, type: d.type, name: d.name, routineId: d.routineId})));
-    const newTodos = [...todos];
-    let currentRoutineId: string | undefined = undefined;
-    let changed = false;
-
-    data.forEach(item => {
-      if (item.type === 'routine') {
-        currentRoutineId = item.id;
-      } else if (item.type === 'todo' && item.item) {
-        const todo = newTodos.find(t => t.id === item.item!.id);
-        if (todo && todo.routineId !== currentRoutineId) {
-          console.log(`Todo '${todo.text}' moved from ${todo.routineId} to ${currentRoutineId}`);
-          todo.routineId = currentRoutineId;
-          changed = true;
-        }
-      }
-    });
-
-    if (changed) {
-      console.log('Updating todos state and saving to storage.');
-      setTodos(newTodos);
-      saveTodos(newTodos);
-    } else {
-      console.log('No changes in routine assignments detected.');
-    }
+    console.log('Drag ended. New data order:', data.map(d => ({id: d.id, type: d.type, name: d.name, routineId: d.routineId, level: d.level})));
+    
+    // Reconstruct the nested todo structure from the flattened data
+    const reconstructed = reconstructTodos(data, todos);
+    setTodos(reconstructed);
+    saveTodos(reconstructed);
   };
 
   const flatData: FlatListItem[] = [];
   routines.forEach(routine => {
-    flatData.push({ type: 'routine', id: routine.id, name: routine.name });
+    flatData.push({ type: 'routine', id: routine.id, name: routine.name, level: 0 });
     if (!collapsedRoutines.includes(routine.id)) {
-      const routineTodos = todos.filter(todo => todo.routineId === routine.id);
-      routineTodos.forEach(todo => {
-        flatData.push({ type: 'todo', id: todo.id, item: todo, routineId: routine.id });
-      });
+      const routineTodos = todos.filter(todo => todo.routineId === routine.id && !todo.parentId);
+      flatData.push(...flattenTodos(routineTodos, routine.id, 0));
     }
   });
 
   const uncategorizedTodos = todos.filter(
-    todo => !todo.routineId || !routines.find(c => c.id === todo.routineId)
+    todo => !todo.routineId || !routines.find(c => c.id === todo.routineId) && !todo.parentId
   );
   if (uncategorizedTodos.length > 0) {
-    flatData.push({ type: 'routine', id: 'uncategorized', name: 'Uncategorized' });
-    uncategorizedTodos.forEach(todo => {
-      flatData.push({ type: 'todo', id: todo.id, item: todo, routineId: 'uncategorized' });
-    });
+    flatData.push({ type: 'routine', id: 'uncategorized', name: 'Uncategorized', level: 0 });
+    flatData.push(...flattenTodos(uncategorizedTodos, 'uncategorized', 0));
   }
 
   const renderItem = ({ item, drag, isActive }: RenderItemParams<FlatListItem>) => {
@@ -160,7 +236,11 @@ const MainScreen = () => {
     // Render todo item
     return (
       <TouchableOpacity
-        style={[styles.todoItem, { backgroundColor: isActive ? '#f0f0f0' : 'white' }]}
+        style={[
+          styles.todoItem,
+          { backgroundColor: isActive ? '#f0f0f0' : 'white' },
+          { paddingLeft: 15 + (item.level * 20) }, // Apply indentation
+        ]}
         onPress={() => handleToggleComplete(item.item!.id)}
         onLongPress={drag}
         disabled={isActive}

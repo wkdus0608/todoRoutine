@@ -24,11 +24,20 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoAdded }) => {
       Alert.alert('Error', 'Routine name cannot be empty.');
       return;
     }
+
+    const currentRoutines = await loadRoutines();
+    const routineExists = currentRoutines.some(routine => routine.name.toLowerCase() === newRoutineName.trim().toLowerCase());
+
+    if (routineExists) {
+      Alert.alert('Error', `Routine with name '${newRoutineName.trim()}' already exists.`);
+      return;
+    }
+
     const newRoutine: Routine = {
       id: uuidv4(),
       name: newRoutineName.trim(),
     };
-    const currentRoutines = await loadRoutines();
+    
     const updatedRoutines = [...currentRoutines, newRoutine];
     await saveRoutines(updatedRoutines);
     setNewRoutineName('');
@@ -62,7 +71,7 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoAdded }) => {
       id: uuidv4(),
       text: text.trim(),
       completed: false,
-      routineId: selectedRoutine,
+      routineId: selectedRoutine || undefined, // Make routineId optional
     };
 
     const currentTodos = await loadTodos();
