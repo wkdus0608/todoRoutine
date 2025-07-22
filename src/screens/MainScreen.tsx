@@ -104,6 +104,7 @@ const MainScreen = () => {
     const loadedRoutines = await loadRoutines();
     setTodos(loadedTodos);
     setRoutines(loadedRoutines);
+    console.log('Loaded Routines:', loadedRoutines); // Add this line
   };
 
   useFocusEffect(
@@ -204,6 +205,7 @@ const MainScreen = () => {
     }
   });
 
+  // Always add uncategorized routine header if there are uncategorized todos
   const uncategorizedTodos = todos.filter(
     todo => !todo.routineId || !routines.find(c => c.id === todo.routineId) && !todo.parentId
   );

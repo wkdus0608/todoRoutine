@@ -41,8 +41,9 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoAdded }) => {
     const updatedRoutines = [...currentRoutines, newRoutine];
     await saveRoutines(updatedRoutines);
     setNewRoutineName('');
-    Alert.alert('Success', 'Routine created successfully!');
-    fetchRoutines(); // Re-fetch routines to update the picker
+    // Alert.alert('Success', 'Routine created successfully!');
+    // fetchRoutines(); // Re-fetch routines to update the picker
+    onTodoAdded(); // Notify MainScreen to refresh and close modal
   };
 
   const fetchRoutines = async () => {
