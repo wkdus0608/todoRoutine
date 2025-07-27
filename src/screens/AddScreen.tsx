@@ -58,7 +58,7 @@ const AddScreen = () => {
       <Text style={styles.label}>Category:</Text>
       <Picker
         selectedValue={selectedCategory}
-        onValueChange={(itemValue) => setSelectedCategory(itemValue)}
+        onValueChange={itemValue => setSelectedCategory(itemValue)}
       >
         {categories.map(cat => (
           <Picker.Item key={cat.id} label={cat.name} value={cat.id} />

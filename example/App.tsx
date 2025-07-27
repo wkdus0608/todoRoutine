@@ -1,18 +1,10 @@
 import React, { useState } from 'react';
-import {
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  TouchableOpacity,
-} from 'react-native';
-import { ProjectSidebar } from './src/components/ProjectSidebar';
-import { TodoView } from './src/components/TodoView';
+import { Button } from './components/ui/button';
+import { Menu } from 'lucide-react';
+import { ProjectSidebar } from './components/ProjectSidebar';
+import { TodoView } from './components/TodoView';
+import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 
-
-// 데이터 타입 정의
 interface Project {
   id: string;
   name: string;
@@ -43,7 +35,6 @@ interface Todo {
   projectId?: string;
 }
 
-// 초기 데이터
 const initialProjects: Project[] = [
   {
     id: '1',
@@ -52,10 +43,7 @@ const initialProjects: Project[] = [
       { id: '1-1', name: '웹사이트 개발', children: [], todos: [] },
       { id: '1-2', name: '포트폴리오', children: [], todos: [] }
     ],
-    todos: [
-        { id: 't-1', text: '기획서 작성', completed: true, createdAt: new Date() },
-        { id: 't-2', text: '디자인 시안', completed: false, createdAt: new Date() },
-    ]
+    todos: []
   },
   {
     id: '2',
@@ -71,6 +59,7 @@ const initialProjects: Project[] = [
 export default function App() {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('1');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const findProject = (projects: Project[], id: string): Project | null => {
     for (const project of projects) {
@@ -163,86 +152,74 @@ export default function App() {
     }
   };
 
+  const SidebarContent = () => (
+    <ProjectSidebar
+      projects={projects}
+      selectedProjectId={selectedProjectId}
+      onSelectProject={setSelectedProjectId}
+      onAddProject={addProject}
+      onDeleteProject={deleteProject}
+    />
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.main}>
-        <View style={styles.sidebarContainer}>
-            <ProjectSidebar
-                projects={projects}
-                selectedProjectId={selectedProjectId}
-                onSelectProject={setSelectedProjectId}
-                onAddProject={addProject}
-                onDeleteProject={deleteProject}
-            />
-        </View>
-        <View style={styles.contentContainer}>
-            <Text style={styles.header}>
+    <div className="min-h-screen bg-gray-50">
+      {/* Desktop Layout */}
+      <div className="hidden md:flex">
+        <div className="w-80 border-r bg-white">
+          <SidebarContent />
+        </div>
+        <div className="flex-1">
+          <div className="p-6 pb-20">
+            <div className="flex items-center gap-3 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">
                 {selectedProject?.name || '프로젝트를 선택하세요'}
-            </Text>
+              </h1>
+            </div>
             {selectedProject && (
-                <TodoView
-                    todos={selectedProject.todos}
-                    onAddTodo={addTodo}
-                    onToggleTodo={toggleTodo}
-                    onDeleteTodo={deleteTodo}
-                />
+              <TodoView
+                todos={selectedProject.todos}
+                currentProjectId={selectedProjectId}
+                allProjects={projects}
+                onAddTodo={addTodo}
+                onToggleTodo={toggleTodo}
+                onDeleteTodo={deleteTodo}
+              />
             )}
-        </View>
-      </View>
-    </SafeAreaView>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Layout */}
+      <div className="md:hidden">
+        <div className="bg-white border-b px-4 py-3 flex items-center gap-3">
+          <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-80 p-0">
+              <SidebarContent />
+            </SheetContent>
+          </Sheet>
+          <h1 className="font-semibold text-gray-900">
+            {selectedProject?.name || '프로젝트를 선택하세요'}
+          </h1>
+        </div>
+        <div className="p-4 pb-20">
+          {selectedProject && (
+            <TodoView
+              todos={selectedProject.todos}
+              currentProjectId={selectedProjectId}
+              allProjects={projects}
+              onAddTodo={addTodo}
+              onToggleTodo={toggleTodo}
+              onDeleteTodo={deleteTodo}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6', // bg-gray-100
-  },
-  main: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  sidebarContainer: {
-    width: 280, // w-80
-    borderRightWidth: 1,
-    borderRightColor: '#E5E7EB', // border-gray-200
-    backgroundColor: '#FFFFFF', // bg-white
-  },
-  contentContainer: {
-    flex: 1,
-    padding: 24, // p-6
-  },
-  header: {
-    fontSize: 24, // text-2xl
-    fontWeight: 'bold',
-    color: '#111827', // text-gray-900
-    marginBottom: 24, // mb-6
-  },
-  // 임시 스타일
-  sidebar: {
-      padding: 10,
-  },
-  sidebarTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginBottom: 10,
-  },
-  projectItem: {
-      paddingVertical: 8,
-      fontSize: 16,
-  },
-  todoTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginBottom: 10,
-  },
-  todoItem: {
-      paddingVertical: 8,
-      fontSize: 16,
-  },
-  completedTodo: {
-      textDecorationLine: 'line-through',
-      color: 'gray',
-  }
-});
