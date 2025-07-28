@@ -7,6 +7,7 @@ import {
   View,
   TouchableOpacity,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ProjectSidebar } from './src/components/ProjectSidebar';
 import { TodoView } from './src/components/TodoView';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -87,7 +88,7 @@ export default function App() {
       completed: false,
       createdAt: new Date(),
       routineId: projectIdToUse,
-      ...dateInfo, // Spread the date info into the new todo
+      ...dateInfo,
     };
 
     setProjects(prev =>
@@ -166,43 +167,45 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.main}>
-        {isSidebarOpen && (
-          <View style={styles.sidebarContainer}>
-            <ProjectSidebar
-              projects={projects}
-              selectedProjectId={selectedProjectId}
-              onSelectProject={setSelectedProjectId}
-              onAddProject={addProject}
-              onDeleteProject={deleteProject}
-              toggleSidebar={toggleSidebar}
-            />
-          </View>
-        )}
-        <View style={styles.contentContainer}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity onPress={toggleSidebar} style={styles.menuButton}>
-              <Icon name="menu" size={28} color="#111827" />
-            </TouchableOpacity>
-            <Text style={styles.header}>
-              {selectedProject?.name || '프로젝트를 선택하세요'}
-            </Text>
-          </View>
-          {selectedProject && (
-            <TodoView
-              todos={selectedProject.todos}
-              projects={getAllProjects(projects)}
-              selectedProjectId={selectedProjectId}
-              onAddTodo={addTodo}
-              onToggleTodo={toggleTodo}
-              onDeleteTodo={deleteTodo}
-            />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.main}>
+          {isSidebarOpen && (
+            <View style={styles.sidebarContainer}>
+              <ProjectSidebar
+                projects={projects}
+                selectedProjectId={selectedProjectId}
+                onSelectProject={setSelectedProjectId}
+                onAddProject={addProject}
+                onDeleteProject={deleteProject}
+                toggleSidebar={toggleSidebar}
+              />
+            </View>
           )}
+          <View style={styles.contentContainer}>
+            <View style={styles.headerRow}>
+              <TouchableOpacity onPress={toggleSidebar} style={styles.menuButton}>
+                <Icon name="menu" size={28} color="#111827" />
+              </TouchableOpacity>
+              <Text style={styles.header}>
+                {selectedProject?.name || '프로젝트를 선택하세요'}
+              </Text>
+            </View>
+            {selectedProject && (
+              <TodoView
+                todos={selectedProject.todos}
+                projects={getAllProjects(projects)}
+                selectedProjectId={selectedProjectId}
+                onAddTodo={addTodo}
+                onToggleTodo={toggleTodo}
+                onDeleteTodo={deleteTodo}
+              />
+            )}
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
