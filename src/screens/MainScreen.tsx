@@ -1,55 +1,85 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, Button, StyleSheet, TouchableOpacity, Alert, Modal } from 'react-native';
-import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  SafeAreaView,
+} from 'react-native';
+import DraggableFlatList, {
+  RenderItemParams,
+} from 'react-native-draggable-flatlist';
 import AddTodoForm from '../components/AddTodoForm';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { loadTodos, saveTodos, loadRoutines, saveRoutines } from '../storage/dataManager';
+import {
+  loadTodos,
+  saveTodos,
+  loadRoutines,
+  saveRoutines,
+} from '../storage/dataManager';
 import { Todo, Routine } from '../types';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
 
-// Define a type for the flattened data structure
+type MainScreenNavigationProp = DrawerNavigationProp<{
+  Home: undefined;
+}>;
+
 interface FlatListItem {
-  type: 'routine' | 'todo';
+  type: 'routine' | 'todo' | 'completed_header';
   id: string;
-  name?: string; // For routines
-  item?: Todo; // For todos
+  name?: string;
+  item?: Todo;
   routineId?: string;
-  parentId?: string; // Added for sub-todos
-  level: number; // Added for indentation
+  parentId?: string;
+  level: number;
+  isCompleted?: boolean;
 }
 
-// Helper function to flatten todos with their sub-todos for DraggableFlatList
-const flattenTodos = (todosArray: Todo[], routineId: string | undefined, level: number = 0): FlatListItem[] => {
+// Helper functions (flattenTodos, reconstructTodos) remain the same...
+const flattenTodos = (
+  todosArray: Todo[],
+  routineId: string | undefined,
+  level: number = 0,
+  isCompleted: boolean = false,
+): FlatListItem[] => {
   let flattened: FlatListItem[] = [];
   todosArray.forEach(todo => {
-    flattened.push({
-      type: 'todo',
-      id: todo.id,
-      item: todo,
-      routineId: routineId,
-      parentId: todo.parentId,
-      level: level,
-    });
-    if (todo.subTodos && todo.subTodos.length > 0) {
-      flattened = flattened.concat(flattenTodos(todo.subTodos, routineId, level + 1));
+    if (todo.completed === isCompleted) {
+      flattened.push({
+        type: 'todo',
+        id: todo.id,
+        item: todo,
+        routineId: routineId,
+        parentId: todo.parentId,
+        level: level,
+        isCompleted,
+      });
+      if (todo.subTodos && todo.subTodos.length > 0) {
+        flattened = flattened.concat(
+          flattenTodos(todo.subTodos, routineId, level + 1, isCompleted),
+        );
+      }
     }
   });
   return flattened;
 };
 
-// Helper function to reconstruct nested todos from flattened data
-const reconstructTodos = (flatData: FlatListItem[], allOriginalTodos: Todo[]): Todo[] => {
+const reconstructTodos = (
+  flatData: FlatListItem[],
+  allOriginalTodos: Todo[],
+): Todo[] => {
   const newTopLevelTodos: Todo[] = [];
-  const tempTodoMap = new Map<string, Todo>(); // To store todos as we process them, with cleared parent/subTodo relationships
+  const tempTodoMap = new Map<string, Todo>();
 
-  // Initialize all todos with their original properties, but clear parent/subTodo relationships
   allOriginalTodos.forEach(todo => {
     const cleanTodo: Todo = { ...todo, parentId: undefined, subTodos: [] };
     tempTodoMap.set(cleanTodo.id, cleanTodo);
   });
 
-  const parentStack: { id: string; level: number; todoRef: Todo }[] = []; // Stack to keep track of potential parents
-
+  const parentStack: { id: string; level: number; todoRef: Todo }[] = [];
   let currentRoutineId: string | undefined = undefined;
 
   for (let i = 0; i < flatData.length; i++) {
@@ -57,82 +87,78 @@ const reconstructTodos = (flatData: FlatListItem[], allOriginalTodos: Todo[]): T
 
     if (item.type === 'routine') {
       currentRoutineId = item.id;
-      parentStack.length = 0; // Reset parent stack for new routine
+      parentStack.length = 0;
     } else if (item.type === 'todo' && item.item) {
       const currentTodo = tempTodoMap.get(item.id);
       if (!currentTodo) continue;
 
-      currentTodo.routineId = currentRoutineId; // Assign routine based on current context
+      currentTodo.routineId = currentRoutineId;
+      let effectiveLevel = item.level;
 
-      // Determine the effective level based on the previous item's effective level
-      // This is a heuristic: if an item is dropped immediately after another, and it's
-      // visually indented, we assume it's a child. We'll use the original level as a hint,
-      // but primarily rely on the stack for parent-child relationships.
-      let effectiveLevel = item.level; // Start with the original level as a base hint
-
-      // Adjust parentStack based on current item's effective level
-      while (parentStack.length > 0 && parentStack[parentStack.length - 1].level >= effectiveLevel) {
+      while (
+        parentStack.length > 0 &&
+        parentStack[parentStack.length - 1].level >= effectiveLevel
+      ) {
         parentStack.pop();
       }
 
       if (parentStack.length > 0) {
-        // This todo is a child of the top of the stack
         const parent = parentStack[parentStack.length - 1];
         currentTodo.parentId = parent.id;
         parent.todoRef.subTodos?.push(currentTodo);
       } else {
-        // This is a top-level todo for the current routine or uncategorized
         newTopLevelTodos.push(currentTodo);
       }
 
-      // Push current todo to stack if it can be a parent
-      // Use the effectiveLevel for the stack to maintain correct hierarchy
-      parentStack.push({ id: currentTodo.id, level: effectiveLevel, todoRef: currentTodo });
+      parentStack.push({
+        id: currentTodo.id,
+        level: effectiveLevel,
+        todoRef: currentTodo,
+      });
     }
   }
   return newTopLevelTodos;
 };
 
+
 const MainScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<MainScreenNavigationProp>();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [collapsedRoutines, setCollapsedRoutines] = useState<string[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
+
 
   const fetchData = async () => {
     const loadedTodos = await loadTodos();
     const loadedRoutines = await loadRoutines();
     setTodos(loadedTodos);
     setRoutines(loadedRoutines);
-    console.log('Loaded Routines:', loadedRoutines); // Add this line
+    if (loadedRoutines.length > 0 && !selectedRoutineId) {
+      setSelectedRoutineId(loadedRoutines[0].id);
+    }
   };
 
   useFocusEffect(
     useCallback(() => {
       fetchData();
-    }, [])
+    }, []),
   );
 
-  const [modalVisible, setModalVisible] = useState(false);
-
   const handleTodoAdded = () => {
-    fetchData(); // Reload data
-    setModalVisible(false); // Close modal
+    fetchData();
+    setModalVisible(false);
   };
 
   const handleDeleteTodo = async (idToDelete: string) => {
     const deleteRecursive = (todosArray: Todo[]): Todo[] => {
       return todosArray.filter(todo => {
-        if (todo.id === idToDelete) {
-          return false; // This todo is deleted
-        }
-        if (todo.subTodos && todo.subTodos.length > 0) {
-          todo.subTodos = deleteRecursive(todo.subTodos);
-        }
+        if (todo.id === idToDelete) return false;
+        if (todo.subTodos) todo.subTodos = deleteRecursive(todo.subTodos);
         return true;
       });
     };
-
     const updatedTodos = deleteRecursive(todos);
     setTodos(updatedTodos);
     await saveTodos(updatedTodos);
@@ -144,23 +170,23 @@ const MainScreen = () => {
         if (todo.id === idToToggle) {
           return { ...todo, completed: !todo.completed };
         }
-        if (todo.subTodos && todo.subTodos.length > 0) {
+        if (todo.subTodos) {
           return { ...todo, subTodos: toggleRecursive(todo.subTodos) };
         }
         return todo;
       });
     };
-
     const updatedTodos = toggleRecursive(todos);
     setTodos(updatedTodos);
     await saveTodos(updatedTodos);
   };
 
   const handleToggleCollapse = (routineId: string) => {
+    setSelectedRoutineId(routineId); // Set the selected routine
     setCollapsedRoutines(prev =>
       prev.includes(routineId)
         ? prev.filter(id => id !== routineId)
-        : [...prev, routineId]
+        : [...prev, routineId],
     );
   };
 
@@ -183,46 +209,70 @@ const MainScreen = () => {
           style: 'destructive',
         },
       ],
-      { cancelable: true }
     );
   };
 
   const handleDragEnd = ({ data }: { data: FlatListItem[] }) => {
-    console.log('Drag ended. New data order:', data.map(d => ({id: d.id, type: d.type, name: d.name, routineId: d.routineId, level: d.level})));
-    
-    // Reconstruct the nested todo structure from the flattened data
     const reconstructed = reconstructTodos(data, todos);
     setTodos(reconstructed);
     saveTodos(reconstructed);
   };
 
+  const activeTodos = todos.filter(todo => !todo.completed);
+  const completedTodos = todos.filter(todo => todo.completed);
+
   const flatData: FlatListItem[] = [];
+
+  // Active Todos
   routines.forEach(routine => {
-    flatData.push({ type: 'routine', id: routine.id, name: routine.name, level: 0 });
-    if (!collapsedRoutines.includes(routine.id)) {
-      const routineTodos = todos.filter(todo => todo.routineId === routine.id && !todo.parentId);
-      flatData.push(...flattenTodos(routineTodos, routine.id, 0));
+    const routineActiveTodos = activeTodos.filter(
+      todo => todo.routineId === routine.id && !todo.parentId,
+    );
+    if (routineActiveTodos.length > 0) {
+      flatData.push({ type: 'routine', id: routine.id, name: routine.name, level: 0 });
+      if (!collapsedRoutines.includes(routine.id)) {
+        flatData.push(...flattenTodos(routineActiveTodos, routine.id, 0, false));
+      }
     }
   });
 
-  // Always add uncategorized routine header if there are uncategorized todos
-  const uncategorizedTodos = todos.filter(
-    todo => !todo.routineId || !routines.find(c => c.id === todo.routineId) && !todo.parentId
+  const uncategorizedActiveTodos = activeTodos.filter(
+    todo => !todo.routineId && !todo.parentId,
   );
-  if (uncategorizedTodos.length > 0) {
+  if (uncategorizedActiveTodos.length > 0) {
     flatData.push({ type: 'routine', id: 'uncategorized', name: 'Uncategorized', level: 0 });
-    flatData.push(...flattenTodos(uncategorizedTodos, 'uncategorized', 0));
+    flatData.push(...flattenTodos(uncategorizedActiveTodos, 'uncategorized', 0, false));
   }
+
+  // Completed Todos
+  if (completedTodos.length > 0) {
+    flatData.push({ type: 'completed_header', id: 'completed_header', name: '완료된 항목', level: 0 });
+    completedTodos.forEach(todo => {
+      if (!todo.parentId) { // Only add top-level completed todos
+        flatData.push({
+          type: 'todo',
+          id: todo.id,
+          item: todo,
+          level: 0,
+          isCompleted: true,
+        });
+      }
+    });
+  }
+
 
   const renderItem = ({ item, drag, isActive }: RenderItemParams<FlatListItem>) => {
     if (item.type === 'routine') {
       return (
         <View style={styles.sectionHeaderContainer}>
-          <TouchableOpacity onPress={() => handleToggleCollapse(item.id)} style={styles.sectionHeaderTitleContainer}>
-            <Icon 
-              name={collapsedRoutines.includes(item.id) ? 'keyboard-arrow-right' : 'keyboard-arrow-down'} 
-              size={24} 
-              color="#333" 
+          <TouchableOpacity
+            onPress={() => handleToggleCollapse(item.id)}
+            style={styles.sectionHeaderTitleContainer}
+          >
+            <Icon
+              name={collapsedRoutines.includes(item.id) ? 'keyboard-arrow-right' : 'keyboard-arrow-down'}
+              size={24}
+              color="#333"
             />
             <Text style={styles.sectionHeader}>{item.name}</Text>
           </TouchableOpacity>
@@ -235,23 +285,32 @@ const MainScreen = () => {
       );
     }
 
-    // Render todo item
+    if (item.type === 'completed_header') {
+      return <Text style={styles.completedHeader}>{item.name}</Text>;
+    }
+
     return (
       <TouchableOpacity
         style={[
           styles.todoItem,
           { backgroundColor: isActive ? '#f0f0f0' : 'white' },
-          { paddingLeft: 15 + (item.level * 20) }, // Apply indentation
+          { paddingLeft: 15 + item.level * 20 },
         ]}
         onPress={() => handleToggleComplete(item.item!.id)}
         onLongPress={drag}
-        disabled={isActive}
-        activeOpacity={0.7} // 터치 시 피드백을 위한 표준 투명도 설정
+        disabled={isActive || item.isCompleted}
+        activeOpacity={0.7}
       >
         <View style={styles.todoContent}>
-          <Icon name={item.item!.completed ? 'check-box' : 'check-box-outline-blank'} size={24} color="#4F8EF7" />
+          <Icon
+            name={item.item!.completed ? 'check-box' : 'check-box-outline-blank'}
+            size={24}
+            color="#4F8EF7"
+          />
           <View style={styles.todoTextContainer}>
-            <Text style={[styles.todoText, item.item!.completed && styles.completedText]}>{item.item!.text}</Text>
+            <Text style={[styles.todoText, item.item!.completed && styles.completedText]}>
+              {item.item!.text}
+            </Text>
             {item.item?.dueDate && (
               <Text style={styles.dueDateText}>
                 Due: {new Date(item.item.dueDate).toLocaleDateString()}
@@ -267,7 +326,14 @@ const MainScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.openDrawer()}>
+          <Icon name="menu" size={30} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>목록</Text>
+        <View style={{ width: 30 }} />
+      </View>
       <DraggableFlatList
         data={flatData}
         renderItem={renderItem}
@@ -276,50 +342,56 @@ const MainScreen = () => {
         ListEmptyComponent={<Text style={styles.emptyText}>No todos yet. Add one!</Text>}
       />
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => {
-          setModalVisible(!modalVisible);
-        }}
+        onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <AddTodoForm onTodoAdded={handleTodoAdded} source="main" />
-            <Button title="Close" onPress={() => setModalVisible(false)} />
-          </View>
+            <AddTodoForm
+              onTodoAdded={handleTodoAdded}
+              onCancel={() => setModalVisible(false)}
+              projects={routines}
+              currentProjectId={selectedRoutineId}
+            />
         </View>
       </Modal>
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-      >
+      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
         <Icon name="add" size={30} color="white" />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#ddd' },
-  todoItem: {
+  container: { flex: 1, backgroundColor: '#fff' },
+  header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
-    backgroundColor: 'white',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  todoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
   todoContent: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   todoTextContainer: { marginLeft: 10, flex: 1 },
-  todoText: { fontSize: 18 },
+  todoText: { fontSize: 16 },
   completedText: { textDecorationLine: 'line-through', color: '#aaa' },
-  dueDateText: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 4,
-  },
+  dueDateText: { fontSize: 12, color: '#888', marginTop: 4 },
   fab: {
     position: 'absolute',
     right: 30,
@@ -333,43 +405,35 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   emptyText: { textAlign: 'center', marginTop: 50, fontSize: 18, color: '#999' },
-  sectionHeader: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    paddingVertical: 10,
-    color: '#333',
-  },
+  sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#333', marginLeft: 8 },
   sectionHeaderContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f9f9f9',
     paddingHorizontal: 15,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: '#eee',
   },
-  sectionHeaderTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  sectionHeaderTitleContainer: { flexDirection: 'row', alignItems: 'center' },
+  completedHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#f9f9f9',
+    color: '#333',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    marginTop: 0,
   },
   centeredView: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalView: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 20,
   },
 });
 

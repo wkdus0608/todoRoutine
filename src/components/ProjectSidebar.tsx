@@ -31,6 +31,7 @@ interface ProjectSidebarProps {
   onSelectProject: (id: string) => void;
   onAddProject: (name: string, parentId?: string) => void;
   onDeleteProject: (id: string) => void;
+  toggleSidebar: () => void;
 }
 
 export function ProjectSidebar({
@@ -38,7 +39,8 @@ export function ProjectSidebar({
   selectedProjectId,
   onSelectProject,
   onAddProject,
-  onDeleteProject
+  onDeleteProject,
+  toggleSidebar,
 }: ProjectSidebarProps) {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set(['1', '2']));
   const [isAddingProject, setIsAddingProject] = useState<string | null>(null);
@@ -139,9 +141,14 @@ export function ProjectSidebar({
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>프로젝트</Text>
-        <TouchableOpacity onPress={() => setIsAddingProject('root')}>
-          <Icon name="plus" size={20} color="#111827" />
-        </TouchableOpacity>
+        <View style={{flexDirection: 'row'}}>
+          <TouchableOpacity onPress={() => setIsAddingProject('root')}>
+            <Icon name="plus" size={20} color="#111827" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleSidebar} style={{marginLeft: 15}}>
+            <Icon name="x" size={20} color="#111827" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {isAddingProject === 'root' && (

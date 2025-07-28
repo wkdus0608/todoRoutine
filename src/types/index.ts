@@ -1,14 +1,40 @@
 export interface Routine {
   id: string;
   name: string;
+  children?: Routine[];
+}
+
+export interface DateRange {
+  startDate: string;
+  endDate: string;
+}
+
+export interface RepeatSettings {
+  frequency: 'weekly' | 'monthly' | 'yearly';
+  startDate: string; // Start date is essential for all repeats
+  endDate?: string; // Optional end date
+  weekdays?: { // For weekly repeats
+    sunday: boolean;
+    monday: boolean;
+    tuesday: boolean;
+    wednesday: boolean;
+    thursday: boolean;
+    friday: boolean;
+    saturday: boolean;
+  };
 }
 
 export interface Todo {
   id: string;
   text: string;
   completed: boolean;
-  routineId?: string; // Optional: ID of the routine this todo belongs to
-  parentId?: string; // Optional: ID of the parent todo if this is a sub-todo
-  subTodos?: Todo[]; // Optional: Array of sub-todos
-  dueDate?: string; // Optional: Due date for the todo
+  createdAt: Date;
+  routineId?: string;
+  parentId?: string;
+  subTodos?: Todo[];
+  
+  // Date and Time related properties
+  dueDate?: string;
+  dateRange?: DateRange;
+  repeatSettings?: RepeatSettings;
 }

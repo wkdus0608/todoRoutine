@@ -5,74 +5,45 @@ import {
   StyleSheet,
   Text,
   View,
-  Button,
   TouchableOpacity,
 } from 'react-native';
 import { ProjectSidebar } from './src/components/ProjectSidebar';
 import { TodoView } from './src/components/TodoView';
-
-
-// 데이터 타입 정의
-interface Project {
-  id: string;
-  name: string;
-  children: Project[];
-  todos: Todo[];
-}
-
-interface DateRange {
-  from?: Date;
-  to?: Date;
-}
-
-interface RepeatSettings {
-  type: 'weekly' | 'monthly' | 'yearly';
-  startDate?: Date;
-  endDate?: Date;
-  weekdays?: number[];
-}
-
-interface Todo {
-  id: string;
-  text: string;
-  completed: boolean;
-  createdAt: Date;
-  dueDate?: Date;
-  dateRange?: DateRange;
-  repeatSettings?: RepeatSettings;
-  projectId?: string;
-}
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { Routine as Project, Todo, DateRange, RepeatSettings } from './src/types';
 
 // 초기 데이터
 const initialProjects: Project[] = [
   {
     id: '1',
     name: '개인 프로젝트',
-    children: [
-      { id: '1-1', name: '웹사이트 개발', children: [], todos: [] },
-      { id: '1-2', name: '포트폴리오', children: [], todos: [] }
-    ],
+    children: [],
     todos: [
-        { id: 't-1', text: '기획서 작성', completed: true, createdAt: new Date() },
-        { id: 't-2', text: '디자인 시안', completed: false, createdAt: new Date() },
-    ]
+      { id: 't-1', text: '기획서 작성', completed: true, createdAt: new Date() },
+      { id: 't-2', text: '디자인 시안', completed: false, createdAt: new Date() },
+    ],
   },
   {
     id: '2',
     name: '회사 업무',
-    children: [
-      { id: '2-1', name: 'Q1 목표', children: [], todos: [] },
-      { id: '2-2', name: '팀 미팅', children: [], todos: [] }
-    ],
-    todos: []
-  }
+    children: [],
+    todos: [],
+  },
 ];
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('1');
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
 
-  const findProject = (projects: Project[], id: string): Project | null => {
+  const toggleSidebar = () => {
+    setSidebarOpen(!isSidebarOpen);
+  };
+
+  const findProject = (
+    projects: Project[],
+    id: string,
+  ): Project | null => {
     for (const project of projects) {
       if (project.id === id) return project;
       const found = findProject(project.children, id);
@@ -81,54 +52,70 @@ export default function App() {
     return null;
   };
 
-  const updateProject = (projects: Project[], projectId: string, updater: (project: Project) => Project): Project[] => {
+  const updateProject = (
+    projects: Project[],
+    projectId: string,
+    updater: (project: Project) => Project,
+  ): Project[] => {
     return projects.map(project => {
       if (project.id === projectId) {
         return updater(project);
       }
       return {
         ...project,
-        children: updateProject(project.children, projectId, updater)
+        children: updateProject(project.children, projectId, updater),
       };
     });
   };
 
   const selectedProject = findProject(projects, selectedProjectId);
 
-  const addTodo = (text: string, dueDate?: Date, dateRange?: DateRange, repeatSettings?: RepeatSettings, targetProjectId?: string) => {
-    const projectIdToUse = targetProjectId || selectedProjectId;
-    
+  const addTodo = (
+    text: string,
+    dateInfo: {
+      dueDate?: string;
+      dateRange?: DateRange;
+      repeatSettings?: RepeatSettings;
+    },
+    projectId?: string,
+  ) => {
+    const projectIdToUse = projectId || selectedProjectId;
+
     const newTodo: Todo = {
       id: Date.now().toString(),
       text,
       completed: false,
       createdAt: new Date(),
-      dueDate: dueDate,
-      dateRange: dateRange,
-      repeatSettings: repeatSettings,
-      projectId: targetProjectId ? targetProjectId : undefined
+      routineId: projectIdToUse,
+      ...dateInfo, // Spread the date info into the new todo
     };
 
-    setProjects(prev => updateProject(prev, projectIdToUse, project => ({
-      ...project,
-      todos: [...project.todos, newTodo]
-    })));
+    setProjects(prev =>
+      updateProject(prev, projectIdToUse, project => ({
+        ...project,
+        todos: [...project.todos, newTodo],
+      })),
+    );
   };
 
   const toggleTodo = (todoId: string) => {
-    setProjects(prev => updateProject(prev, selectedProjectId, project => ({
-      ...project,
-      todos: project.todos.map(todo =>
-        todo.id === todoId ? { ...todo, completed: !todo.completed } : todo
-      )
-    })));
+    setProjects(prev =>
+      updateProject(prev, selectedProjectId, project => ({
+        ...project,
+        todos: project.todos.map(todo =>
+          todo.id === todoId ? { ...todo, completed: !todo.completed } : todo,
+        ),
+      })),
+    );
   };
 
   const deleteTodo = (todoId: string) => {
-    setProjects(prev => updateProject(prev, selectedProjectId, project => ({
-      ...project,
-      todos: project.todos.filter(todo => todo.id !== todoId)
-    })));
+    setProjects(prev =>
+      updateProject(prev, selectedProjectId, project => ({
+        ...project,
+        todos: project.todos.filter(todo => todo.id !== todoId),
+      })),
+    );
   };
 
   const addProject = (name: string, parentId?: string) => {
@@ -136,14 +123,16 @@ export default function App() {
       id: Date.now().toString(),
       name,
       children: [],
-      todos: []
+      todos: [],
     };
 
     if (parentId) {
-      setProjects(prev => updateProject(prev, parentId, parent => ({
-        ...parent,
-        children: [...parent.children, newProject]
-      })));
+      setProjects(prev =>
+        updateProject(prev, parentId, parent => ({
+          ...parent,
+          children: [...parent.children, newProject],
+        })),
+      );
     } else {
       setProjects(prev => [...prev, newProject]);
     }
@@ -151,43 +140,66 @@ export default function App() {
 
   const deleteProject = (projectId: string) => {
     const removeFromProjects = (projects: Project[]): Project[] => {
-      return projects.filter(p => p.id !== projectId).map(p => ({
-        ...p,
-        children: removeFromProjects(p.children)
-      }));
+      return projects
+        .filter(p => p.id !== projectId)
+        .map(p => ({
+          ...p,
+          children: removeFromProjects(p.children),
+        }));
     };
-    
+
     setProjects(prev => removeFromProjects(prev));
     if (selectedProjectId === projectId) {
       setSelectedProjectId(projects[0]?.id || '');
     }
   };
 
+  const getAllProjects = (projectList: Project[]): Project[] => {
+    let all: Project[] = [];
+    for (const p of projectList) {
+      all.push(p);
+      if (p.children.length > 0) {
+        all = all.concat(getAllProjects(p.children));
+      }
+    }
+    return all;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.main}>
-        <View style={styles.sidebarContainer}>
+        {isSidebarOpen && (
+          <View style={styles.sidebarContainer}>
             <ProjectSidebar
-                projects={projects}
-                selectedProjectId={selectedProjectId}
-                onSelectProject={setSelectedProjectId}
-                onAddProject={addProject}
-                onDeleteProject={deleteProject}
+              projects={projects}
+              selectedProjectId={selectedProjectId}
+              onSelectProject={setSelectedProjectId}
+              onAddProject={addProject}
+              onDeleteProject={deleteProject}
+              toggleSidebar={toggleSidebar}
             />
-        </View>
+          </View>
+        )}
         <View style={styles.contentContainer}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={toggleSidebar} style={styles.menuButton}>
+              <Icon name="menu" size={28} color="#111827" />
+            </TouchableOpacity>
             <Text style={styles.header}>
-                {selectedProject?.name || '프로젝트를 선택하세요'}
+              {selectedProject?.name || '프로젝트를 선택하세요'}
             </Text>
-            {selectedProject && (
-                <TodoView
-                    todos={selectedProject.todos}
-                    onAddTodo={addTodo}
-                    onToggleTodo={toggleTodo}
-                    onDeleteTodo={deleteTodo}
-                />
-            )}
+          </View>
+          {selectedProject && (
+            <TodoView
+              todos={selectedProject.todos}
+              projects={getAllProjects(projects)}
+              selectedProjectId={selectedProjectId}
+              onAddTodo={addTodo}
+              onToggleTodo={toggleTodo}
+              onDeleteTodo={deleteTodo}
+            />
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -197,52 +209,34 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6', // bg-gray-100
+    backgroundColor: '#F3F4F6',
   },
   main: {
     flex: 1,
     flexDirection: 'row',
   },
   sidebarContainer: {
-    width: 280, // w-80
+    width: 280,
     borderRightWidth: 1,
-    borderRightColor: '#E5E7EB', // border-gray-200
-    backgroundColor: '#FFFFFF', // bg-white
+    borderRightColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
   },
   contentContainer: {
     flex: 1,
-    padding: 24, // p-6
+    padding: 24,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  menuButton: {
+    marginRight: 16,
   },
   header: {
-    fontSize: 24, // text-2xl
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827', // text-gray-900
-    marginBottom: 24, // mb-6
+    color: '#111827',
+    flex: 1,
   },
-  // 임시 스타일
-  sidebar: {
-      padding: 10,
-  },
-  sidebarTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginBottom: 10,
-  },
-  projectItem: {
-      paddingVertical: 8,
-      fontSize: 16,
-  },
-  todoTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginBottom: 10,
-  },
-  todoItem: {
-      paddingVertical: 8,
-      fontSize: 16,
-  },
-  completedTodo: {
-      textDecorationLine: 'line-through',
-      color: 'gray',
-  }
 });
