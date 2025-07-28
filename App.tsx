@@ -18,7 +18,10 @@ const initialProjects: Project[] = [
   {
     id: '1',
     name: '개인 프로젝트',
-    children: [],
+    children: [
+        { id: '1-1', name: '웹사이트 개발', children: [], todos: [] },
+        { id: '1-2', name: '포트폴리오', children: [], todos: [] }
+    ],
     todos: [
       { id: 't-1', text: '기획서 작성', completed: true, createdAt: new Date() },
       { id: 't-2', text: '디자인 시안', completed: false, createdAt: new Date() },
@@ -47,8 +50,10 @@ export default function App() {
   ): Project | null => {
     for (const project of projects) {
       if (project.id === id) return project;
-      const found = findProject(project.children, id);
-      if (found) return found;
+      if (project.children) {
+        const found = findProject(project.children, id);
+        if (found) return found;
+      }
     }
     return null;
   };
@@ -62,10 +67,13 @@ export default function App() {
       if (project.id === projectId) {
         return updater(project);
       }
-      return {
-        ...project,
-        children: updateProject(project.children, projectId, updater),
-      };
+      if (project.children) {
+        return {
+          ...project,
+          children: updateProject(project.children, projectId, updater),
+        };
+      }
+      return project;
     });
   };
 
@@ -145,7 +153,7 @@ export default function App() {
         .filter(p => p.id !== projectId)
         .map(p => ({
           ...p,
-          children: removeFromProjects(p.children),
+          children: removeFromProjects(p.children || []),
         }));
     };
 
@@ -153,17 +161,6 @@ export default function App() {
     if (selectedProjectId === projectId) {
       setSelectedProjectId(projects[0]?.id || '');
     }
-  };
-
-  const getAllProjects = (projectList: Project[]): Project[] => {
-    let all: Project[] = [];
-    for (const p of projectList) {
-      all.push(p);
-      if (p.children.length > 0) {
-        all = all.concat(getAllProjects(p.children));
-      }
-    }
-    return all;
   };
 
   return (
@@ -195,7 +192,7 @@ export default function App() {
             {selectedProject && (
               <TodoView
                 todos={selectedProject.todos}
-                projects={getAllProjects(projects)}
+                projects={projects} 
                 selectedProjectId={selectedProjectId}
                 onAddTodo={addTodo}
                 onToggleTodo={toggleTodo}

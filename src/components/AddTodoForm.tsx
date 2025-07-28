@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
+  ScrollView,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Routine as Project, DateRange, RepeatSettings } from '../types';
 import DatePickerSheet from './DatePickerSheet';
@@ -38,7 +38,13 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({
     currentProjectId,
   );
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
-  const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [isProjectPickerVisible, setProjectPickerVisible] = useState(false);
+  const [projectPickerPosition, setProjectPickerPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
+  const projectButtonRef = useRef(null);
 
   const [dateInfo, setDateInfo] = useState<{
     dueDate?: string;
@@ -61,35 +67,57 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({
   };
 
   const getFormattedDate = () => {
-    if (dateInfo.dueDate) {
+    if (dateInfo.dueDate)
       return new Date(dateInfo.dueDate).toLocaleDateString('ko-KR');
-    }
-    if (dateInfo.dateRange?.start && dateInfo.dateRange?.end) {
-      const start = new Date(dateInfo.dateRange.start).toLocaleDateString('ko-KR');
-      const end = new Date(dateInfo.dateRange.end).toLocaleDateString('ko-KR');
-      return `${start} - ${end}`;
-    }
-    if (dateInfo.repeatSettings) {
-        const { frequency, weekdays } = dateInfo.repeatSettings;
-        let repeatText = '';
-        if (frequency === 'weekly') {
-            const selectedDays = Object.entries(weekdays || {})
-                .filter(([, value]) => value)
-                .map(([key]) => key.substring(0, 1).toUpperCase())
-                .join(', ');
-            repeatText = `매주 ${selectedDays}`;
-        } else if (frequency === 'monthly') {
-            repeatText = '매월';
-        } else if (frequency === 'yearly') {
-            repeatText = '매년';
-        }
-        return repeatText;
-    }
+    if (dateInfo.dateRange?.start)
+      return `${new Date(dateInfo.dateRange.start).toLocaleDateString(
+        'ko-KR',
+      )} - ${new Date(dateInfo.dateRange.end).toLocaleDateString('ko-KR')}`;
+    if (dateInfo.repeatSettings) return '반복 설정됨';
     return 'No Date';
   };
 
-  const currentProjectName =
-    projects.find(p => p.id === selectedProjectId)?.name || '프로젝트 선택';
+  const findProjectName = (
+    id: string | null,
+    projectList: Project[],
+  ): string => {
+    for (const project of projectList) {
+      if (project.id === id) return project.name;
+      if (project.children) {
+        const found = findProjectName(id, project.children);
+        if (found) return found;
+      }
+    }
+    return '프로젝트 선택';
+  };
+
+  const currentProjectName = findProjectName(selectedProjectId, projects);
+
+  const openProjectPicker = () => {
+    projectButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setProjectPickerPosition({ top: y + height, left: x, width });
+      setProjectPickerVisible(true);
+    });
+  };
+
+  const renderProjectItem = (project: Project, level = 0) => (
+    <View key={project.id}>
+      <TouchableOpacity
+        style={[styles.projectPickerItem, { paddingLeft: 16 + level * 5 }]} // Reduced indentation
+        onPress={() => {
+          setSelectedProjectId(project.id);
+          setProjectPickerVisible(false);
+        }}
+      >
+        <Text style={styles.projectPickerItemText}>{project.name}</Text>
+        {selectedProjectId === project.id && (
+          <Icon name="check" size={20} color="#3B82F6" />
+        )}
+      </TouchableOpacity>
+      {project.children &&
+        project.children.map(child => renderProjectItem(child, level + 1))}
+    </View>
+  );
 
   return (
     <>
@@ -112,31 +140,15 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
+            ref={projectButtonRef}
             style={styles.button}
-            onPress={() => setShowProjectPicker(!showProjectPicker)}
+            onPress={openProjectPicker}
           >
             <Icon name="folder-open" size={16} color="#555" />
             <Text style={styles.buttonText}>{currentProjectName}</Text>
             <Icon name="arrow-drop-down" size={16} color="#555" />
           </TouchableOpacity>
         </View>
-
-        {showProjectPicker && (
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedProjectId}
-              onValueChange={itemValue => setSelectedProjectId(itemValue)}
-            >
-              {projects.map(project => (
-                <Picker.Item
-                  key={project.id}
-                  label={project.name}
-                  value={project.id}
-                />
-              ))}
-            </Picker>
-          </View>
-        )}
 
         <View style={styles.footer}>
           <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
@@ -148,99 +160,131 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({
         </View>
       </View>
 
+      {/* Date Picker Modal */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={isDatePickerVisible}
         onRequestClose={() => setDatePickerVisibility(false)}
       >
-        <View style={{flex: 1, justifyContent: 'flex-end'}}>
-            <TouchableOpacity style={styles.sheetBackdrop} onPress={() => setDatePickerVisibility(false)} />
-            <DatePickerSheet
-              onClose={() => setDatePickerVisibility(false)}
-              onConfirm={handleConfirmDate}
-            />
+        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <TouchableOpacity
+            style={styles.sheetBackdrop}
+            onPress={() => setDatePickerVisibility(false)}
+          />
+          <DatePickerSheet
+            onClose={() => setDatePickerVisibility(false)}
+            onConfirm={handleConfirmDate}
+          />
         </View>
+      </Modal>
+
+      {/* Project Picker Dropdown Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isProjectPickerVisible}
+        onRequestClose={() => setProjectPickerVisible(false)}
+      >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          onPress={() => setProjectPickerVisible(false)}
+        >
+          <View
+            style={[
+              styles.projectPickerDropdown,
+              {
+                top: projectPickerPosition.top,
+                left: projectPickerPosition.left,
+                width: projectPickerPosition.width,
+              },
+            ]}
+          >
+            <ScrollView>
+              {projects.map(project => renderProjectItem(project))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </>
   );
 };
 
 const styles = StyleSheet.create({
-    container: {
-      backgroundColor: 'white',
-      padding: 20,
-      borderRadius: 16,
-      width: '100%',
-    },
-    title: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      marginBottom: 20,
-      textAlign: 'center',
-    },
-    input: {
-      backgroundColor: '#f0f0f0',
-      borderRadius: 8,
-      padding: 12,
-      fontSize: 16,
-      marginBottom: 16,
-    },
-    buttonsContainer: {
-      flexDirection: 'row',
-      marginBottom: 16,
-    },
-    button: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#f0f0f0',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 8,
-      marginRight: 10,
-    },
-    buttonText: {
-      marginLeft: 8,
-      fontSize: 14,
-      color: '#333',
-    },
-    pickerContainer: {
-      backgroundColor: '#f0f0f0',
-      borderRadius: 8,
-      marginBottom: 16,
-    },
-    footer: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      marginTop: 20,
-    },
-    cancelButton: {
-      backgroundColor: '#e0e0e0',
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 8,
-      marginRight: 10,
-    },
-    cancelButtonText: {
-      color: '#333',
-      fontWeight: 'bold',
-      fontSize: 16,
-    },
-    addButton: {
-      backgroundColor: '#4F8EF7',
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 8,
-    },
-    addButtonText: {
-      color: 'white',
-      fontWeight: 'bold',
-      fontSize: 16,
-    },
-    sheetBackdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-    }
-  });
-  
-  export default AddTodoForm;
+  container: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 16,
+    width: '100%',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  buttonsContainer: { flexDirection: 'row', marginBottom: 16, zIndex: 1 },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  buttonText: { marginLeft: 8, fontSize: 14, color: '#333' },
+  footer: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 20 },
+  cancelButton: {
+    backgroundColor: '#e0e0e0',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  cancelButtonText: { color: '#333', fontWeight: 'bold', fontSize: 16 },
+  addButton: {
+    backgroundColor: '#4F8EF7',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  addButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  sheetBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  projectPickerDropdown: {
+    position: 'absolute',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderColor: '#E5E7EB',
+    borderWidth: 1,
+    maxHeight: 200,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+  },
+  projectPickerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  projectPickerItemText: {
+    fontSize: 16,
+  },
+});
+
+export default AddTodoForm;
