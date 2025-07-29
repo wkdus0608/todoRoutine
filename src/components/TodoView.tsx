@@ -4,7 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
+  ScrollView,
   Modal,
   Animated,
 } from 'react-native';
@@ -31,7 +31,7 @@ interface TodoViewProps {
   onDeleteTodo: (todoId: string) => void;
 }
 
-const TodoItem = ({ todo, onToggle, onDelete }) => {
+const TodoItem = ({ todo, onToggle, onDelete, isLast }) => {
   const swipeableRef = useRef(null);
 
   const renderRightActions = (progress, dragX) => {
@@ -59,23 +59,26 @@ const TodoItem = ({ todo, onToggle, onDelete }) => {
 
   return (
     <Swipeable ref={swipeableRef} renderRightActions={renderRightActions}>
-      <View style={styles.todoItemContainer}>
-        <TouchableOpacity onPress={() => onToggle(todo.id)} style={styles.todoCheckbox}>
-          <Icon
-            name={todo.completed ? 'check-square' : 'square'}
-            size={24}
-            color={todo.completed ? '#9CA3AF' : '#4F8EF7'}
-          />
-        </TouchableOpacity>
+      <TouchableOpacity 
+        style={[styles.todoItemContainer, isLast && styles.lastTodoItem]}
+        onPress={() => onToggle(todo.id)}
+        activeOpacity={0.7}
+      >
+        <Icon
+          name={todo.completed ? 'check-square' : 'square'}
+          size={24}
+          color={todo.completed ? '#9CA3AF' : '#4F8EF7'}
+          style={styles.todoCheckbox}
+        />
         <View style={styles.todoTextContainer}>
-            <Text style={[styles.todoText, todo.completed && styles.completedTodoText]}>
-                {todo.text}
-            </Text>
+          <Text style={[styles.todoText, todo.completed && styles.completedTodoText]}>
+            {todo.text}
+          </Text>
         </View>
         {dateString && (
-            <Text style={styles.dateInfoText}>{dateString}</Text>
+          <Text style={styles.dateInfoText}>{dateString}</Text>
         )}
-      </View>
+      </TouchableOpacity>
     </Swipeable>
   );
 };
@@ -105,37 +108,68 @@ export function TodoView({
 
   const completedTodos = todos.filter(todo => todo.completed);
   const incompleteTodos = todos.filter(todo => !todo.completed);
+  const totalTodos = todos.length;
+
+  const renderEmptyState = (message: string) => (
+    <View style={styles.emptyStateContainer}>
+      <Text style={styles.emptyStateText}>{message}</Text>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={incompleteTodos}
-        renderItem={({ item }) => (
-          <TodoItem todo={item} onToggle={onToggleTodo} onDelete={onDeleteTodo} />
-        )}
-        keyExtractor={item => item.id}
-        ListHeaderComponent={
-          <Text style={styles.listHeader}>할 일 ({incompleteTodos.length})</Text>
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>할 일이 없습니다.</Text>
-          </View>
-        }
-      />
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 진행 상황 요약 */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryText}>
+            전체: {totalTodos}개, 완료: {completedTodos.length}개, 남은 할 일: {incompleteTodos.length}개
+          </Text>
+        </View>
 
-      {completedTodos.length > 0 && (
-        <FlatList
-          data={completedTodos}
-          renderItem={({ item }) => (
-            <TodoItem todo={item} onToggle={onToggleTodo} onDelete={onDeleteTodo} />
+        {/* 할 일 섹션 */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Icon name="circle" size={20} color="#4F8EF7" style={styles.sectionIcon} />
+            <Text style={styles.sectionTitle}>할 일 ({incompleteTodos.length})</Text>
+          </View>
+          {incompleteTodos.length > 0 ? (
+            incompleteTodos.map((todo, index) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                onToggle={onToggleTodo}
+                onDelete={onDeleteTodo}
+                isLast={index === incompleteTodos.length - 1}
+              />
+            ))
+          ) : (
+            renderEmptyState('할 일이 없습니다.')
           )}
-          keyExtractor={item => item.id}
-          ListHeaderComponent={
-            <Text style={styles.listHeader}>완료된 항목 ({completedTodos.length})</Text>
-          }
-        />
-      )}
+        </View>
+
+        {/* 완료된 항목 섹션 */}
+        {completedTodos.length > 0 && (
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Icon name="check-circle" size={20} color="#10B981" style={styles.sectionIcon} />
+              <Text style={styles.sectionTitle}>완료된 항목 ({completedTodos.length})</Text>
+            </View>
+            {completedTodos.map((todo, index) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                onToggle={onToggleTodo}
+                onDelete={onDeleteTodo}
+                isLast={index === completedTodos.length - 1}
+              />
+            ))}
+          </View>
+        )}
+      </ScrollView>
 
       <TouchableOpacity
         style={styles.fab}
@@ -164,26 +198,130 @@ export function TodoView({
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
-    listHeader: { fontSize: 18, fontWeight: 'bold', marginTop: 20, marginBottom: 10, color: '#111827', paddingHorizontal: 15 },
-    todoItemContainer: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        backgroundColor: '#FFFFFF', 
-        paddingVertical: 16, 
-        paddingHorizontal: 15, 
-        borderBottomWidth: 1, 
-        borderBottomColor: '#f0f0f0' 
-    },
-    todoCheckbox: { marginRight: 12 },
-    todoTextContainer: { flex: 1 },
-    todoText: { fontSize: 16, color: '#1F2937' },
-    completedTodoText: { textDecorationLine: 'line-through', color: '#9CA3AF' },
-    dateInfoText: { fontSize: 14, color: '#888' },
-    emptyContainer: { alignItems: 'center', marginTop: 50 },
-    emptyText: { fontSize: 16, color: '#6B7280' },
-    fab: { position: 'absolute', width: 56, height: 56, alignItems: 'center', justifyContent: 'center', right: 20, bottom: 20, backgroundColor: '#3B82F6', borderRadius: 28, elevation: 8 },
-    centeredView: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 20 },
-    deleteAction: { backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center', width: 80 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F9F9F9' 
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 100,
+  },
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FAFAFA',
+  },
+  sectionIcon: {
+    marginRight: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  todoItemContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF', 
+    paddingVertical: 16, 
+    paddingHorizontal: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E5E7EB',
+  },
+  lastTodoItem: {
+    borderBottomWidth: 0,
+  },
+  todoCheckbox: { 
+    marginRight: 12 
+  },
+  todoTextContainer: { 
+    flex: 1 
+  },
+  todoText: { 
+    fontSize: 16, 
+    color: '#1F2937' 
+  },
+  completedTodoText: { 
+    textDecorationLine: 'line-through', 
+    color: '#9CA3AF' 
+  },
+  dateInfoText: { 
+    fontSize: 13, 
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  emptyStateContainer: { 
+    alignItems: 'center', 
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+  emptyStateText: { 
+    fontSize: 16, 
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  fab: { 
+    position: 'absolute', 
+    width: 56, 
+    height: 56, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    right: 20, 
+    bottom: 20, 
+    backgroundColor: '#1C1C1E', 
+    borderRadius: 28, 
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  centeredView: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(0,0,0,0.4)', 
+    paddingHorizontal: 20 
+  },
+  deleteAction: { 
+    backgroundColor: '#EF4444', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    width: 80 
+  },
 });
