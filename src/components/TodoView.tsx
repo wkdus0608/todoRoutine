@@ -55,11 +55,15 @@ const TodoItem = ({ todo, onToggle, onDelete, isLast }) => {
     );
   };
 
-  const dateString = formatDateInfo(todo.dueDate, todo.dateRange, todo.repeatSettings);
+  const dateString = formatDateInfo(
+    todo.dueDate,
+    todo.dateRange,
+    todo.repeatSettings,
+  );
 
   return (
     <Swipeable ref={swipeableRef} renderRightActions={renderRightActions}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.todoItemContainer, isLast && styles.lastTodoItem]}
         onPress={() => onToggle(todo.id)}
         activeOpacity={0.7}
@@ -71,13 +75,16 @@ const TodoItem = ({ todo, onToggle, onDelete, isLast }) => {
           style={styles.todoCheckbox}
         />
         <View style={styles.todoTextContainer}>
-          <Text style={[styles.todoText, todo.completed && styles.completedTodoText]}>
+          <Text
+            style={[
+              styles.todoText,
+              todo.completed && styles.completedTodoText,
+            ]}
+          >
             {todo.text}
           </Text>
         </View>
-        {dateString && (
-          <Text style={styles.dateInfoText}>{dateString}</Text>
-        )}
+        {dateString && <Text style={styles.dateInfoText}>{dateString}</Text>}
       </TouchableOpacity>
     </Swipeable>
   );
@@ -118,7 +125,7 @@ export function TodoView({
 
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
@@ -126,48 +133,58 @@ export function TodoView({
         {/* 진행 상황 요약 */}
         <View style={styles.summaryCard}>
           <Text style={styles.summaryText}>
-            전체: {totalTodos}개, 완료: {completedTodos.length}개, 남은 할 일: {incompleteTodos.length}개
+            전체: {totalTodos}개     완료: {completedTodos.length}개     남은 할 일:{' '}
+            {incompleteTodos.length}개
           </Text>
         </View>
 
         {/* 할 일 섹션 */}
+        <View style={styles.sectionHeader}>
+          <Icon name="circle" size={15} color="1" style={styles.sectionIcon} />
+          <Text style={styles.sectionTitle}>
+            할 일 ({incompleteTodos.length})
+          </Text>
+        </View>
         <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Icon name="circle" size={20} color="#4F8EF7" style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>할 일 ({incompleteTodos.length})</Text>
-          </View>
-          {incompleteTodos.length > 0 ? (
-            incompleteTodos.map((todo, index) => (
-              <TodoItem
-                key={todo.id}
-                todo={todo}
-                onToggle={onToggleTodo}
-                onDelete={onDeleteTodo}
-                isLast={index === incompleteTodos.length - 1}
-              />
-            ))
-          ) : (
-            renderEmptyState('할 일이 없습니다.')
-          )}
+          {incompleteTodos.length > 0
+            ? incompleteTodos.map((todo, index) => (
+                <TodoItem
+                  key={todo.id}
+                  todo={todo}
+                  onToggle={onToggleTodo}
+                  onDelete={onDeleteTodo}
+                  isLast={index === incompleteTodos.length - 1}
+                />
+              ))
+            : renderEmptyState('할 일이 없습니다.')}
         </View>
 
         {/* 완료된 항목 섹션 */}
         {completedTodos.length > 0 && (
-          <View style={styles.sectionCard}>
+          <>
             <View style={styles.sectionHeader}>
-              <Icon name="check-circle" size={20} color="#10B981" style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>완료된 항목 ({completedTodos.length})</Text>
-            </View>
-            {completedTodos.map((todo, index) => (
-              <TodoItem
-                key={todo.id}
-                todo={todo}
-                onToggle={onToggleTodo}
-                onDelete={onDeleteTodo}
-                isLast={index === completedTodos.length - 1}
+              <Icon
+                name="check-circle"
+                size={15}
+                color="#888888"
+                style={styles.sectionIcon}
               />
-            ))}
-          </View>
+              <Text style={[styles.sectionTitle, { color: '#888888' }]}>
+                완료된 항목 ({completedTodos.length})
+              </Text>
+            </View>
+            <View style={styles.sectionCard}>
+              {completedTodos.map((todo, index) => (
+                <TodoItem
+                  key={todo.id}
+                  todo={todo}
+                  onToggle={onToggleTodo}
+                  onDelete={onDeleteTodo}
+                  isLast={index === completedTodos.length - 1}
+                />
+              ))}
+            </View>
+          </>
         )}
       </ScrollView>
 
@@ -198,130 +215,131 @@ export function TodoView({
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F9F9F9' 
+  container: {
+    flex: 1,
+    backgroundColor: '0',
   },
   scrollView: {
     flex: 1,
   },
   scrollContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     paddingTop: 16,
     paddingBottom: 100,
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    backgroundColor: '0',
+    padding: 0,
+    marginBottom: 10,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.08,
+    // shadowRadius: 8,
     elevation: 3,
+    marginHorizontal: 8,
   },
   summaryText: {
     fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: '0',
+    textAlign: 'left',
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 10,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.08,
+    // shadowRadius: 8,
+    // elevation: 3,
     overflow: 'hidden',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FAFAFA',
+    paddingHorizontal: 1,
+    paddingVertical: 10,
+    // borderBottomWidth: 0,
+    // borderBottomColor: '#E5E7EB',
+    // backgroundColor: '#FAFAFA',
+    marginHorizontal: 8,
   },
   sectionIcon: {
     marginRight: 8,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#111827',
   },
-  todoItemContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#FFFFFF', 
-    paddingVertical: 16, 
-    paddingHorizontal: 16, 
-    borderBottomWidth: 1, 
+  todoItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   lastTodoItem: {
     borderBottomWidth: 0,
   },
-  todoCheckbox: { 
-    marginRight: 12 
+  todoCheckbox: {
+    marginRight: 12,
   },
-  todoTextContainer: { 
-    flex: 1 
+  todoTextContainer: {
+    flex: 1,
   },
-  todoText: { 
-    fontSize: 16, 
-    color: '#1F2937' 
+  todoText: {
+    fontSize: 16,
+    color: '#1F2937',
   },
-  completedTodoText: { 
-    textDecorationLine: 'line-through', 
-    color: '#9CA3AF' 
+  completedTodoText: {
+    textDecorationLine: 'line-through',
+    color: '#9CA3AF',
   },
-  dateInfoText: { 
-    fontSize: 13, 
+  dateInfoText: {
+    fontSize: 13,
     color: '#6B7280',
     marginLeft: 8,
   },
-  emptyStateContainer: { 
-    alignItems: 'center', 
+  emptyStateContainer: {
+    alignItems: 'center',
     paddingVertical: 32,
     paddingHorizontal: 16,
   },
-  emptyStateText: { 
-    fontSize: 16, 
+  emptyStateText: {
+    fontSize: 16,
     color: '#9CA3AF',
     textAlign: 'center',
   },
-  fab: { 
-    position: 'absolute', 
-    width: 56, 
-    height: 56, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    right: 20, 
-    bottom: 20, 
-    backgroundColor: '#1C1C1E', 
-    borderRadius: 28, 
+  fab: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    right: 20,
+    bottom: 20,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 28,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  centeredView: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: 'rgba(0,0,0,0.4)', 
-    paddingHorizontal: 20 
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 20,
   },
-  deleteAction: { 
-    backgroundColor: '#EF4444', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    width: 80 
+  deleteAction: {
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
   },
 });

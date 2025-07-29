@@ -193,16 +193,18 @@ export default function App() {
                 {selectedProject?.name || '프로젝트를 선택하세요'}
               </Text>
             </View>
-            {selectedProject && (
-              <TodoView
-                todos={selectedProject.todos}
-                projects={projects} 
-                selectedProjectId={selectedProjectId}
-                onAddTodo={addTodo}
-                onToggleTodo={toggleTodo}
-                onDeleteTodo={deleteTodo}
-              />
-            )}
+            <View style={styles.mainContent}>
+              {selectedProject && (
+                <TodoView
+                  todos={selectedProject.todos}
+                  projects={projects}
+                  selectedProjectId={selectedProjectId}
+                  onAddTodo={addTodo}
+                  onToggleTodo={toggleTodo}
+                  onDeleteTodo={deleteTodo}
+                />
+              )}
+            </View>
           </View>
         </View>
       </SafeAreaView>
@@ -213,7 +215,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
   },
   main: {
     flex: 1,
@@ -227,12 +229,16 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    padding: 24,
+    backgroundColor: '#F3F4F6',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#000000',
   },
   menuButton: {
     marginRight: 16,
@@ -241,6 +247,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#111827',
+    flex: 1,
+  },
+  mainContent: {
     flex: 1,
   },
 });
