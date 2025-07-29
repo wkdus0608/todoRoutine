@@ -7,6 +7,7 @@ import {
   Switch,
   ScrollView,
   Modal,
+  TextInput,
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -50,6 +51,7 @@ const DatePickerSheet: React.FC<DatePickerSheetProps> = ({ onClose, onConfirm })
   const [mode, setMode] = useState<Mode>('일반');
   
   const [selectedDate, setSelectedDate] = useState<string | undefined>();
+  const [time, setTime] = useState('09:00'); // Default time
   const [dateRange, setDateRange] = useState<{ start?: string; end?: string }>({});
   
   const [repeatFrequency, setRepeatFrequency] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -108,8 +110,11 @@ const DatePickerSheet: React.FC<DatePickerSheetProps> = ({ onClose, onConfirm })
 
   const handleConfirmPress = () => {
     let result: DateInfo = {};
-    if (mode === '일반') {
-      result = { date: selectedDate };
+    if (mode === '일반' && selectedDate) {
+      const [hours, minutes] = time.split(':').map(Number);
+      const combinedDate = new Date(selectedDate);
+      combinedDate.setHours(hours, minutes);
+      result = { date: combinedDate.toISOString() };
     } else if (mode === '기간') {
       result = { range: dateRange };
     } else if (mode === '반복' && repeatStartDate) {
@@ -200,15 +205,30 @@ const DatePickerSheet: React.FC<DatePickerSheetProps> = ({ onClose, onConfirm })
       </View>
 
       {mode === '반복' ? renderRepeatContent() : (
-        <Calendar
-            onDayPress={handleDayPress}
-            markingType={mode === '기간' ? 'period' : 'custom'}
-            markedDates={markedDates}
-            theme={{
-                arrowColor: '#3B82F6',
-                todayTextColor: '#3B82F6',
-            }}
-        />
+        <>
+          <Calendar
+              onDayPress={handleDayPress}
+              markingType={mode === '기간' ? 'period' : 'custom'}
+              markedDates={markedDates}
+              theme={{
+                  arrowColor: '#3B82F6',
+                  todayTextColor: '#3B82F6',
+              }}
+          />
+          {mode === '일반' && (
+            <View style={styles.timeInputContainer}>
+              <Text style={styles.label}>시간</Text>
+              <TextInput
+                style={styles.timeInput}
+                value={time}
+                onChangeText={setTime}
+                placeholder="HH:MM"
+                maxLength={5}
+                keyboardType="numeric"
+              />
+            </View>
+          )}
+        </>
       )}
 
       <View style={styles.footer}>
@@ -266,6 +286,16 @@ const styles = StyleSheet.create({
     confirmButtonText: { color: 'white', fontWeight: 'bold' },
     frequencyPicker: { position: 'absolute', backgroundColor: 'white', borderRadius: 8, borderColor: '#E5E7EB', borderWidth: 1, elevation: 5 },
     frequencyPickerItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+    timeInputContainer: {
+        marginTop: 16,
+    },
+    timeInput: {
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        textAlign: 'center',
+    },
 });
 
 export default DatePickerSheet;

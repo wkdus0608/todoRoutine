@@ -22,6 +22,7 @@ import {
 import { Todo, Routine } from '../types';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { formatDateInfo } from '../utils/dateUtils';
 
 type MainScreenNavigationProp = DrawerNavigationProp<{
   Home: undefined;
@@ -288,6 +289,8 @@ const MainScreen = () => {
     if (item.type === 'completed_header') {
       return <Text style={styles.completedHeader}>{item.name}</Text>;
     }
+    
+    const dateString = item.item ? formatDateInfo(item.item.dueDate, item.item.dateRange, item.item.repeatSettings) : null;
 
     return (
       <TouchableOpacity
@@ -311,16 +314,11 @@ const MainScreen = () => {
             <Text style={[styles.todoText, item.item!.completed && styles.completedText]}>
               {item.item!.text}
             </Text>
-            {item.item?.dueDate && (
-              <Text style={styles.dueDateText}>
-                Due: {new Date(item.item.dueDate).toLocaleDateString()}
-              </Text>
-            )}
           </View>
         </View>
-        <TouchableOpacity onPress={() => handleDeleteTodo(item.item!.id)}>
-          <Icon name="delete" size={24} color="red" />
-        </TouchableOpacity>
+        {dateString && (
+          <Text style={styles.dueDateText}>{dateString}</Text>
+        )}
       </TouchableOpacity>
     );
   };
@@ -381,17 +379,18 @@ const styles = StyleSheet.create({
   todoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    justifyContent: 'space-between',
+    paddingVertical: 16,
     paddingHorizontal: 15,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
   todoContent: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  todoTextContainer: { marginLeft: 10, flex: 1 },
-  todoText: { fontSize: 16 },
-  completedText: { textDecorationLine: 'line-through', color: '#aaa' },
-  dueDateText: { fontSize: 12, color: '#888', marginTop: 4 },
+  todoTextContainer: { marginLeft: 12, flex: 1 },
+  todoText: { fontSize: 16, color: '#1F2937' },
+  completedText: { textDecorationLine: 'line-through', color: '#9CA3AF' },
+  dueDateText: { fontSize: 14, color: '#888' },
   fab: {
     position: 'absolute',
     right: 30,

@@ -62,7 +62,12 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({
   };
 
   const handleConfirmDate = (newDateInfo: any) => {
-    setDateInfo(newDateInfo);
+    const mappedDateInfo = {
+      dueDate: newDateInfo.date,
+      dateRange: newDateInfo.range,
+      repeatSettings: newDateInfo.repeat,
+    };
+    setDateInfo(mappedDateInfo);
     setDatePickerVisibility(false);
   };
 

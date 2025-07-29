@@ -96,8 +96,12 @@ export default function App() {
       completed: false,
       createdAt: new Date(),
       routineId: projectIdToUse,
-      ...dateInfo,
+      dueDate: dateInfo.dueDate,
+      dateRange: dateInfo.dateRange,
+      repeatSettings: dateInfo.repeatSettings,
     };
+
+    console.log("Adding new todo:", newTodo); // For debugging
 
     setProjects(prev =>
       updateProject(prev, projectIdToUse, project => ({
