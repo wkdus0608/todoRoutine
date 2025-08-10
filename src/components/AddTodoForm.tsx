@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { Routine as Project, DateRange, RepeatSettings } from '../types';
+import { Routine as Project, DateRange, RepeatSettings, Todo } from '../types';
 import DatePickerSheet from './DatePickerSheet';
+import EisenhowerMatrixSheet from './EisenhowerMatrixSheet';
+
+type Priority = NonNullable<Todo['priority']>;
 
 interface AddTodoFormProps {
   onTodoAdded: (
@@ -20,6 +24,7 @@ interface AddTodoFormProps {
       dateRange?: DateRange;
       repeatSettings?: RepeatSettings;
     },
+    priority: Priority,
     projectId?: string,
   ) => void;
   onCancel: () => void;
@@ -39,6 +44,7 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({
   );
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [isProjectPickerVisible, setProjectPickerVisible] = useState(false);
+  const [isMatrixVisible, setMatrixVisible] = useState(false);
   const [projectPickerPosition, setProjectPickerPosition] = useState({
     top: 0,
     left: 0,
@@ -57,8 +63,16 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({
   }, [currentProjectId]);
 
   const handleAddPress = () => {
-    if (text.trim() === '') return;
-    onTodoAdded(text.trim(), dateInfo, selectedProjectId || undefined);
+    if (text.trim() === '') {
+      Alert.alert('오류', '할 일 내용을 입력해주세요.');
+      return;
+    }
+    setMatrixVisible(true);
+  };
+
+  const handleSelectPriority = (priority: Priority) => {
+    onTodoAdded(text.trim(), dateInfo, priority, selectedProjectId || undefined);
+    setMatrixVisible(false);
   };
 
   const handleConfirmDate = (newDateInfo: any) => {
@@ -211,6 +225,12 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({
           </View>
         </TouchableOpacity>
       </Modal>
+      
+      <EisenhowerMatrixSheet
+        visible={isMatrixVisible}
+        onClose={() => setMatrixVisible(false)}
+        onSelect={handleSelectPriority}
+      />
     </>
   );
 };

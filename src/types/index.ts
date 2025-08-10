@@ -37,4 +37,7 @@ export interface Todo {
   dueDate?: string;
   dateRange?: DateRange;
   repeatSettings?: RepeatSettings;
+
+  // Eisenhower Matrix priority
+  priority?: 'urgent_important' | 'not_urgent_important' | 'urgent_not_important' | 'not_urgent_not_important';
 }

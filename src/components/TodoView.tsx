@@ -85,6 +85,9 @@ const TodoItem = ({ todo, onToggle, onDelete, isLast }) => {
           </Text>
         </View>
         {dateString && <Text style={styles.dateInfoText}>{dateString}</Text>}
+        {todo.priority && (
+          <View style={[styles.priorityIndicator, styles[todo.priority]]} />
+        )}
       </TouchableOpacity>
     </Swipeable>
   );
@@ -341,5 +344,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
+  },
+  priorityIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  urgent_important: {
+    backgroundColor: '#d32f2f',
+  },
+  not_urgent_important: {
+    backgroundColor: '#388e3c',
+  },
+  urgent_not_important: {
+    backgroundColor: '#fbc02d',
+  },
+  not_urgent_not_important: {
+    backgroundColor: '#757575',
   },
 });

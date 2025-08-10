@@ -43,3 +43,20 @@ export const saveTodos = async (todos: Todo[]): Promise<void> => {
     console.error('Failed to save todos.', e);
   }
 };
+
+export const addTodo = async (newTodo: Omit<Todo, 'id' | 'completed' | 'createdAt'> & { id?: string; completed?: boolean; createdAt?: Date }): Promise<void> => {
+  try {
+    const currentTodos = await loadTodos();
+    const todoToAdd: Todo = {
+      id: newTodo.id || new Date().toISOString(),
+      text: newTodo.text,
+      completed: newTodo.completed || false,
+      createdAt: newTodo.createdAt || new Date(),
+      ...newTodo,
+    };
+    const updatedTodos = [...currentTodos, todoToAdd];
+    await saveTodos(updatedTodos);
+  } catch (e) {
+    console.error('Failed to add todo.', e);
+  }
+};

@@ -23,8 +23,8 @@ const initialProjects: Project[] = [
         { id: '1-2', name: '포트폴리오', children: [], todos: [] }
     ],
     todos: [
-      { id: 't-1', text: '기획서 작성', completed: true, createdAt: new Date() },
-      { id: 't-2', text: '디자인 시안', completed: false, createdAt: new Date() },
+      { id: 't-1', text: '기획서 작성', completed: true, createdAt: new Date(), priority: 'urgent_important' },
+      { id: 't-2', text: '디자인 시안', completed: false, createdAt: new Date(), priority: 'not_urgent_important' },
     ],
   },
   {
@@ -34,6 +34,25 @@ const initialProjects: Project[] = [
     todos: [],
   },
 ];
+
+const priorityOrder: { [key in NonNullable<Todo['priority']>]: number } = {
+  urgent_important: 1,
+  not_urgent_important: 2,
+  urgent_not_important: 3,
+  not_urgent_not_important: 4,
+};
+
+const sortTodos = (todos: Todo[]): Todo[] => {
+  return todos.sort((a, b) => {
+    const priorityA = a.priority ? priorityOrder[a.priority] : 5;
+    const priorityB = b.priority ? priorityOrder[b.priority] : 5;
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
+};
+
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
@@ -86,6 +105,7 @@ export default function App() {
       dateRange?: DateRange;
       repeatSettings?: RepeatSettings;
     },
+    priority: Todo['priority'],
     projectId?: string,
   ) => {
     const projectIdToUse = projectId || selectedProjectId;
@@ -99,6 +119,7 @@ export default function App() {
       dueDate: dateInfo.dueDate,
       dateRange: dateInfo.dateRange,
       repeatSettings: dateInfo.repeatSettings,
+      priority,
     };
 
     console.log("Adding new todo:", newTodo); // For debugging
@@ -166,6 +187,8 @@ export default function App() {
       setSelectedProjectId(projects[0]?.id || '');
     }
   };
+  
+  const sortedTodos = selectedProject ? sortTodos(selectedProject.todos) : [];
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -196,7 +219,7 @@ export default function App() {
             <View style={styles.mainContent}>
               {selectedProject && (
                 <TodoView
-                  todos={selectedProject.todos}
+                  todos={sortedTodos}
                   projects={projects}
                   selectedProjectId={selectedProjectId}
                   onAddTodo={addTodo}
@@ -253,3 +276,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+

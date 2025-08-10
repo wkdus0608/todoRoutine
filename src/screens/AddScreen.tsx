@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { loadTodos, saveTodos, loadCategories } from '../storage/dataManager';
+import { addTodo, loadCategories } from '../storage/dataManager';
 import { Todo, Category } from '../types';
-import 'react-native-get-random-values';
-import { v4 as uuidv4 } from 'uuid';
-import { Picker } from '@react-native-picker/picker'; // This will require installation
+import { Picker } from '@react-native-picker/picker';
+import EisenhowerMatrixSheet from '../components/EisenhowerMatrixSheet';
+
+type Priority = NonNullable<Todo['priority']>;
 
 const AddScreen = () => {
   const navigation = useNavigation();
   const [text, setText] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isMatrixVisible, setMatrixVisible] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const loadedCategories = await loadCategories();
+      // Assuming loadCategories is defined elsewhere and works as before
+      const loadedCategories = await loadCategories(); 
       setCategories(loadedCategories);
       if (loadedCategories.length > 0) {
         setSelectedCategory(loadedCategories[0].id);
@@ -24,47 +27,58 @@ const AddScreen = () => {
     fetchCategories();
   }, []);
 
-  const handleAddTodo = async () => {
+  const handleSaveTodo = async (priority: Priority) => {
+    if (text.trim() === '' || !selectedCategory) {
+      // This check is redundant if openMatrixSheet handles it, but good for safety
+      return;
+    }
+
+    const newTodo: Omit<Todo, 'id' | 'completed' | 'createdAt'> = {
+      text: text.trim(),
+      categoryId: selectedCategory,
+      priority: priority,
+    };
+
+    await addTodo(newTodo);
+    navigation.goBack();
+  };
+
+  const openMatrixSheet = () => {
     if (text.trim() === '') {
-      Alert.alert('Error', 'Todo text cannot be empty.');
+      Alert.alert('오류', '할 일 내용을 입력해주세요.');
       return;
     }
     if (!selectedCategory) {
-      Alert.alert('Error', 'Please select a category.');
+      Alert.alert('오류', '카테고리를 선택해주세요.');
       return;
     }
-
-    const newTodo: Todo = {
-      id: uuidv4(),
-      text: text.trim(),
-      completed: false,
-      categoryId: selectedCategory,
-    };
-
-    const currentTodos = await loadTodos();
-    const updatedTodos = [...currentTodos, newTodo];
-    await saveTodos(updatedTodos);
-    navigation.goBack();
+    setMatrixVisible(true);
   };
 
   return (
     <View style={styles.container}>
       <TextInput
         style={styles.input}
-        placeholder="Enter new todo..."
+        placeholder="새로운 할 일을 입력하세요..."
         value={text}
         onChangeText={setText}
       />
-      <Text style={styles.label}>Category:</Text>
+      <Text style={styles.label}>카테고리:</Text>
       <Picker
         selectedValue={selectedCategory}
-        onValueChange={itemValue => setSelectedCategory(itemValue)}
+        onValueChange={(itemValue) => setSelectedCategory(itemValue)}
       >
-        {categories.map(cat => (
+        {categories.map((cat) => (
           <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
         ))}
       </Picker>
-      <Button title="Add Todo" onPress={handleAddTodo} />
+      <Button title="추가" onPress={openMatrixSheet} />
+
+      <EisenhowerMatrixSheet
+        visible={isMatrixVisible}
+        onClose={() => setMatrixVisible(false)}
+        onSelect={handleSaveTodo}
+      />
     </View>
   );
 };
