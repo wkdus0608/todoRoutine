@@ -44,14 +44,13 @@ export const saveTodos = async (todos: Todo[]): Promise<void> => {
   }
 };
 
-export const addTodo = async (newTodo: Omit<Todo, 'id' | 'completed' | 'createdAt'> & { id?: string; completed?: boolean; createdAt?: Date }): Promise<void> => {
+export const addTodo = async (newTodo: Omit<Todo, 'id' | 'completed' | 'createdAt'>): Promise<void> => {
   try {
     const currentTodos = await loadTodos();
     const todoToAdd: Todo = {
-      id: newTodo.id || new Date().toISOString(),
-      text: newTodo.text,
-      completed: newTodo.completed || false,
-      createdAt: newTodo.createdAt || new Date(),
+      id: new Date().toISOString(),
+      completed: false,
+      createdAt: new Date(),
       ...newTodo,
     };
     const updatedTodos = [...currentTodos, todoToAdd];

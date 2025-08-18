@@ -4,21 +4,16 @@ import { useNavigation } from '@react-navigation/native';
 import { addTodo, loadCategories } from '../storage/dataManager';
 import { Todo, Category } from '../types';
 import { Picker } from '@react-native-picker/picker';
-import EisenhowerMatrixSheet from '../components/EisenhowerMatrixSheet';
-
-type Priority = NonNullable<Todo['priority']>;
 
 const AddScreen = () => {
   const navigation = useNavigation();
   const [text, setText] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [isMatrixVisible, setMatrixVisible] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
-      // Assuming loadCategories is defined elsewhere and works as before
-      const loadedCategories = await loadCategories(); 
+      const loadedCategories = await loadCategories();
       setCategories(loadedCategories);
       if (loadedCategories.length > 0) {
         setSelectedCategory(loadedCategories[0].id);
@@ -27,32 +22,19 @@ const AddScreen = () => {
     fetchCategories();
   }, []);
 
-  const handleSaveTodo = async (priority: Priority) => {
+  const handleSaveTodo = async () => {
     if (text.trim() === '' || !selectedCategory) {
-      // This check is redundant if openMatrixSheet handles it, but good for safety
+      Alert.alert('오류', '할 일 내용과 카테고리를 모두 선택해주세요.');
       return;
     }
 
     const newTodo: Omit<Todo, 'id' | 'completed' | 'createdAt'> = {
       text: text.trim(),
       categoryId: selectedCategory,
-      priority: priority,
     };
 
     await addTodo(newTodo);
     navigation.goBack();
-  };
-
-  const openMatrixSheet = () => {
-    if (text.trim() === '') {
-      Alert.alert('오류', '할 일 내용을 입력해주세요.');
-      return;
-    }
-    if (!selectedCategory) {
-      Alert.alert('오류', '카테고리를 선택해주세요.');
-      return;
-    }
-    setMatrixVisible(true);
   };
 
   return (
@@ -72,13 +54,7 @@ const AddScreen = () => {
           <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
         ))}
       </Picker>
-      <Button title="추가" onPress={openMatrixSheet} />
-
-      <EisenhowerMatrixSheet
-        visible={isMatrixVisible}
-        onClose={() => setMatrixVisible(false)}
-        onSelect={handleSaveTodo}
-      />
+      <Button title="추가" onPress={handleSaveTodo} />
     </View>
   );
 };

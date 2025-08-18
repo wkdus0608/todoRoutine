@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, Button, StyleSheet, TouchableOpacity, Alert, Modal, FlatList } from 'react-native';
 import AddTodoForm from '../components/AddTodoForm';
 import { useFocusEffect } from '@react-navigation/native';
-import { loadTodos, saveTodos, loadRoutines, saveRoutines } from '../storage/dataManager';
+import { loadTodos, saveTodos, loadRoutines, saveRoutines, addTodo } from '../storage/dataManager';
 import { Todo, Routine } from '../types';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -59,7 +59,21 @@ const TodayScreen = () => {
     }, [])
   );
 
-  const handleTodoAdded = () => {
+  const handleTodoAdded = async (
+    text: string,
+    dateInfo: {
+      dueDate?: string;
+      dateRange?: DateRange;
+      repeatSettings?: RepeatSettings;
+    },
+    projectId?: string,
+  ) => {
+    const newTodo: Omit<Todo, 'id' | 'completed' | 'createdAt'> = {
+      text,
+      ...dateInfo,
+      routineId: projectId,
+    };
+    await addTodo(newTodo);
     fetchData();
     setModalVisible(false);
   };
@@ -168,7 +182,7 @@ const TodayScreen = () => {
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <AddTodoForm onTodoAdded={handleTodoAdded} source="today" />
+            <AddTodoForm onTodoAdded={handleTodoAdded} />
             <Button title="Close" onPress={() => setModalVisible(false)} />
           </View>
         </View>

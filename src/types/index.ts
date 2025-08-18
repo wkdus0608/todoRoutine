@@ -32,7 +32,8 @@ export interface Todo {
   routineId?: string;
   parentId?: string;
   subTodos?: Todo[];
-  
+  categoryId?: string;
+
   // Date and Time related properties
   dueDate?: string;
   dateRange?: DateRange;
