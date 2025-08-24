@@ -8,6 +8,7 @@ import {
   ScrollView,
   Modal,
   TextInput,
+  Alert,
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -70,8 +71,15 @@ const DatePickerSheet: React.FC<DatePickerSheetProps> = ({ onClose, onConfirm })
   const handleDayPress = (day: { dateString: string }) => {
     const { dateString } = day;
     if (selectingDateFor) { // Handle date selection for repeat start/end
-        if (selectingDateFor === 'start') setRepeatStartDate(dateString);
-        if (selectingDateFor === 'end') setRepeatEndDate(dateString);
+        if (selectingDateFor === 'start') {
+            setRepeatStartDate(dateString);
+        } else if (selectingDateFor === 'end') {
+            if (repeatStartDate && new Date(dateString) < new Date(repeatStartDate)) {
+                Alert.alert('오류', '종료 날짜는 시작 날짜보다 빠를 수 없습니다.');
+                return; // Don't set the end date
+            }
+            setRepeatEndDate(dateString);
+        }
         setSelectingDateFor(null); // Close calendar after selection
         return;
     }
@@ -85,6 +93,10 @@ const DatePickerSheet: React.FC<DatePickerSheetProps> = ({ onClose, onConfirm })
         setDateRange(newRange);
         setMarkedDates({ [dateString]: { startingDay: true, color: '#3B82F6', textColor: 'white' } });
       } else {
+        if (new Date(dateString) < new Date(dateRange.start)) {
+            Alert.alert('오류', '종료일은 시작일보다 빠를 수 없습니다.');
+            return;
+        }
         const start = new Date(dateRange.start);
         const end = new Date(dateString);
         setDateRange({ start: dateRange.start, end: dateString });
