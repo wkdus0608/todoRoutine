@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import ProjectScreen from './src/screens/ProjectScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import { Routine as Project, Todo, DateRange, RepeatSettings } from './src/types';
+import { loadRoutines, saveRoutines } from './src/storage/dataManager';
 
 const Tab = createBottomTabNavigator();
 
-// 초기 데이터
 const initialProjects: Project[] = [
   {
     id: '1',
@@ -30,8 +30,39 @@ const initialProjects: Project[] = [
   },
 ];
 
+const hydrateProject = (project: any): Project => {
+  return {
+    ...project,
+    children: project.children ? project.children.map(hydrateProject) : [],
+    todos: project.todos ? project.todos.map(todo => ({
+        ...todo,
+        createdAt: new Date(todo.createdAt)
+    })) : [],
+  };
+};
+
+
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  useEffect(() => {
+    const bootstrapAsync = async () => {
+      const savedProjects = await loadRoutines();
+      if (savedProjects && savedProjects.length > 0) {
+        setProjects(savedProjects.map(hydrateProject));
+      } else {
+        setProjects(initialProjects);
+      }
+    };
+
+    bootstrapAsync();
+  }, []);
+
+  useEffect(() => {
+    if (projects && projects.length > 0) {
+        saveRoutines(projects);
+    }
+  }, [projects]);
 
   const updateProject = (
     projects: Project[],
@@ -73,7 +104,7 @@ export default function App() {
     setProjects(prev =>
       updateProject(prev, projectId, project => ({
         ...project,
-        todos: [...project.todos, newTodo],
+        todos: [...(project.todos || []), newTodo],
       })),
     );
   };
@@ -110,7 +141,7 @@ export default function App() {
       setProjects(prev =>
         updateProject(prev, parentId, parent => ({
           ...parent,
-          children: [...parent.children, newProject],
+          children: [...(parent.children || []), newProject],
         })),
       );
     } else {
